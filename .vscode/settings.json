@@ -1,0 +1,23 @@
+{
+  "workbench.iconTheme": "material-icon-theme",
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true,
+  "editor.tabSize": 2,
+  "editor.bracketPairColorization.enabled": true,
+  "editor.guides.bracketPairs": "active",
+  "files.encoding": "utf8",
+  "files.autoGuessEncoding": false,
+  "files.eol": "\n",
+  "files.trimFinalNewlines": true,
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "[typescript]": {
+    "editor.defaultFormatter": "vscode.typescript-language-features"
+  },
+  "chat.agent.maxRequests": 1000000,
+  "[json]": {
+    "editor.defaultFormatter": "vscode.json-language-features"
+  }
+  // "chat.agent.maxTokens": 1000000,
+  // "chat.agent.maxResponseTokens": 384000,
+}

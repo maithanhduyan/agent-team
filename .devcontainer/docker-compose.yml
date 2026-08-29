@@ -1,0 +1,12 @@
+services:
+  agent-awesome:
+    container_name: agent-awesome
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ..:/workspace:cached
+      - ../.dsh:/home/agent-awesome/.dsh:cached
+    working_dir: /workspace
+    command: sleep infinity

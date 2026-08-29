@@ -1,0 +1,12 @@
+{
+  "recommendations": [
+    "dbaeumer.vscode-eslint",
+    "ms-vscode.vscode-typescript-next",
+    "ms-azuretools.vscode-docker",
+    "ms-azuretools.vscode-containers",
+    "shd101wyy.markdown-preview-enhanced",
+    "esbenp.prettier-vscode",
+    "pkief.material-icon-theme",
+    "typescriptteam.native-preview",
+  ]
+}

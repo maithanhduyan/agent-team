@@ -1,0 +1,25 @@
+# Secrets
+.env
+
+# Dependencies / build output
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Orchestrator
+orchestrator/node_modules/
+orchestrator/dist/
+orchestrator/.pnpm-store/
+
+# Agent workspaces (keep only the .gitkeep files)
+workspaces/*/*
+!workspaces/*/.gitkeep
+
+# Local database data (named volumes are used by compose;
+# ./data is reserved for bind-mount deployments)
+data/*/*
+!data/*/.gitkeep
+
+# Editor / OS
+.DS_Store
+*.log

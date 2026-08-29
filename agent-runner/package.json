@@ -1,0 +1,13 @@
+{
+  "name": "agent-team-runner",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Task runner inside each DeepSeek Harness agent container. Bridges the container to the orchestrator over HTTP; zero dependencies (Node built-ins only).",
+  "type": "module",
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "scripts": {
+    "start": "node runner.js"
+  }
+}

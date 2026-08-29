@@ -1,0 +1,19 @@
+# Normalize line endings for Docker/Linux tooling on Windows checkouts.
+# CRLF in Dockerfiles, shell scripts, or entrypoints breaks builds.
+
+* text=auto eol=lf
+
+*.sh      text eol=lf
+Dockerfile text eol=lf
+*.yml     text eol=lf
+*.yaml    text eol=lf
+*.json    text eol=lf
+*.md      text eol=lf
+*.ts      text eol=lf
+*.js      text eol=lf
+*.sql     text eol=lf
+
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.gif     binary

@@ -1,0 +1,13 @@
+# Build context for docker/dsh/Dockerfile is the project root.
+# Keep it small: only docker/dsh/Dockerfile and agent-runner/ are needed.
+
+.git
+**/node_modules
+**/dist
+.env
+data
+workspaces
+orchestrator
+agents
+*.md
+Makefile

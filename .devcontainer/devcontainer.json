@@ -1,0 +1,31 @@
+{
+  "name": "Agent Awesome",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "agent-awesome",
+  "workspaceFolder": "/workspace",
+  "remoteUser": "agent-awesome",
+  "forwardPorts": [3080, 3000, 5173, 5174],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "ms-vscode.vscode-typescript-next",
+        "shd101wyy.markdown-preview-enhanced",
+        "esbenp.prettier-vscode",
+        "pkief.material-icon-theme",
+        // AI / Copilot (agent autonomy)
+        "GitHub.copilot",
+        "GitHub.copilot-chat"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "terminal.integrated.profiles.linux": {
+          "bash": {
+            "path": "/bin/bash"
+          }
+        }
+      },
+      "postCreateCommand": "dsh web --no-open"
+    }
+  }
+}

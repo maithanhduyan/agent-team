@@ -1,0 +1,214 @@
+# ==========================================================
+# ai-dev-team — multi-agent dev team on DeepSeek Harness
+#
+#   local machine
+#        |
+#  docker compose
+#        |
+#  postgres  redis  orchestrator  dsh-pm  dsh-backend
+#                                 dsh-frontend  dsh-tester  dsh-reviewer
+#
+# All five dsh-* services run the SAME image (docker/dsh/Dockerfile)
+# built from a pinned DSH commit; each is differentiated only by
+# AGENT_ID / AGENT_ROLE / workspace mount / AGENTS.md overlay.
+# ==========================================================
+
+name: ai-dev-team
+
+# Shared block for the five DSH agents. `environment` is intentionally
+# NOT anchored: YAML merge keys are shallow, so a per-service
+# environment map would silently replace the anchored one.
+x-dsh-agent: &dsh-agent
+  image: ai-team/dsh-agent:local
+  build:
+    context: .
+    dockerfile: docker/dsh/Dockerfile
+    args:
+      DSH_REPO: ${DSH_REPO:-https://github.com/deepseek-ai/deepseek-harness.git}
+      DSH_REF: ${DSH_REF:-cd5ef8148158c3a752a658978873241fdf8e2bbc}
+  # Run as root: on Docker Desktop (Windows/macOS) bind mounts appear
+  # root-owned inside the VM, so the image's uid-1000 "dsh" user gets
+  # EACCES writing the workspace. Each agent is already isolated by
+  # its own container + workspace, so root inside is acceptable for
+  # this prototype (see README -> Security notes).
+  user: "0:0"
+  restart: unless-stopped
+  depends_on:
+    orchestrator:
+      condition: service_healthy
+  networks:
+    - ai-team
+
+services:
+  # ==========================================================
+  # Infrastructure
+  # ==========================================================
+
+  postgres:
+    image: postgres:17-alpine
+    container_name: ai-team-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-agent_team}
+      POSTGRES_USER: ${POSTGRES_USER:-agent}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-agent_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-agent} -d ${POSTGRES_DB:-agent_team}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - ai-team
+
+  redis:
+    image: redis:8-alpine
+    container_name: ai-team-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - ai-team
+
+  # ==========================================================
+  # Orchestrator: task DB + dispatch queue + agent registry
+  # ==========================================================
+
+  orchestrator:
+    build:
+      context: ./orchestrator
+      dockerfile: Dockerfile
+    image: ai-team/orchestrator:local
+    container_name: ai-team-orchestrator
+    restart: unless-stopped
+    environment:
+      PORT: 8000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-agent}:${POSTGRES_PASSWORD:-agent_password}@postgres:5432/${POSTGRES_DB:-agent_team}
+      REDIS_URL: redis://redis:6379
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      GITLAB_TOKEN: ${GITLAB_TOKEN:-}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+    networks:
+      - ai-team
+
+  # ==========================================================
+  # PM Agent
+  # ==========================================================
+
+  dsh-pm:
+    <<: *dsh-agent
+    container_name: dsh-pm
+    environment:
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:?Set DEEPSEEK_API_KEY in .env}
+      AGENT_ID: pm
+      AGENT_ROLE: project-manager
+      ORCHESTRATOR_URL: http://orchestrator:8000
+      AGENT_WORKSPACE: /workspace/project
+      DSH_BIN: dsh
+      DSH_PROFILE: headless
+    volumes:
+      - ./workspaces/pm:/workspace/project
+      - ./agents/pm/AGENTS.md:/workspace/project/AGENTS.md:ro
+
+  # ==========================================================
+  # Backend Agent
+  # ==========================================================
+
+  dsh-backend:
+    <<: *dsh-agent
+    container_name: dsh-backend
+    environment:
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:?Set DEEPSEEK_API_KEY in .env}
+      AGENT_ID: backend
+      AGENT_ROLE: backend-developer
+      ORCHESTRATOR_URL: http://orchestrator:8000
+      AGENT_WORKSPACE: /workspace/project
+      DSH_BIN: dsh
+      DSH_PROFILE: headless
+    volumes:
+      - ./workspaces/backend:/workspace/project
+      - ./agents/backend/AGENTS.md:/workspace/project/AGENTS.md:ro
+
+  # ==========================================================
+  # Frontend Agent
+  # ==========================================================
+
+  dsh-frontend:
+    <<: *dsh-agent
+    container_name: dsh-frontend
+    environment:
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:?Set DEEPSEEK_API_KEY in .env}
+      AGENT_ID: frontend
+      AGENT_ROLE: frontend-developer
+      ORCHESTRATOR_URL: http://orchestrator:8000
+      AGENT_WORKSPACE: /workspace/project
+      DSH_BIN: dsh
+      DSH_PROFILE: headless
+    volumes:
+      - ./workspaces/frontend:/workspace/project
+      - ./agents/frontend/AGENTS.md:/workspace/project/AGENTS.md:ro
+
+  # ==========================================================
+  # Tester Agent
+  # ==========================================================
+
+  dsh-tester:
+    <<: *dsh-agent
+    container_name: dsh-tester
+    environment:
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:?Set DEEPSEEK_API_KEY in .env}
+      AGENT_ID: tester
+      AGENT_ROLE: qa-engineer
+      ORCHESTRATOR_URL: http://orchestrator:8000
+      AGENT_WORKSPACE: /workspace/project
+      DSH_BIN: dsh
+      DSH_PROFILE: headless
+    volumes:
+      - ./workspaces/tester:/workspace/project
+      - ./agents/tester/AGENTS.md:/workspace/project/AGENTS.md:ro
+
+  # ==========================================================
+  # Reviewer Agent
+  # ==========================================================
+
+  dsh-reviewer:
+    <<: *dsh-agent
+    container_name: dsh-reviewer
+    environment:
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:?Set DEEPSEEK_API_KEY in .env}
+      AGENT_ID: reviewer
+      AGENT_ROLE: code-reviewer
+      ORCHESTRATOR_URL: http://orchestrator:8000
+      AGENT_WORKSPACE: /workspace/project
+      DSH_BIN: dsh
+      DSH_PROFILE: headless
+    volumes:
+      - ./workspaces/reviewer:/workspace/project
+      - ./agents/reviewer/AGENTS.md:/workspace/project/AGENTS.md:ro
+
+networks:
+  ai-team:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:

@@ -1,0 +1,11 @@
+
+# Keep the Docker build context small and avoid copying local state.
+.git
+.devcontainer
+.vscode
+node_modules
+**/node_modules
+dist
+build
+coverage
+*.log
