@@ -1,23 +1,26 @@
 # ai-dev-team
 
 A multi-agent development team built on [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness),
-orchestrated with Docker Compose. Five DSH agents — **pm**, **backend**,
-**frontend**, **tester**, **reviewer** — each run in their own container
-with their own isolated workspace, coordinated by a small orchestrator
-(PostgreSQL task DB + Redis dispatch queue + HTTP API).
+orchestrated with Docker Compose. Seven DSH agents — **pm**, **ba**,
+**backend**, **frontend**, **tester**, **reviewer**, **cto** — each run
+in their own container with their own isolated workspace, coordinated
+by a small orchestrator (PostgreSQL task DB + Redis dispatch queue +
+HTTP API). The **business owner** interacts through a chat command
+center (DSH Web UI) and a task-board dashboard.
 
 ```text
                     local machine
                          │
                  docker compose
                          │
-        ┌────────────────┼─────────────────┐
-        │                │                 │
-        ▼                ▼                 ▼
-   dsh-pm           dsh-backend       dsh-frontend
-   dsh-tester       dsh-reviewer
-   (5 x DSH,        orchestrator      postgres
-    same image)     (API :8000)       redis
+        ┌────────────────┼──────────────────┐
+        │                │                  │
+        ▼                ▼                  ▼
+   dsh-pm  dsh-ba  dsh-backend        dsh-owner (web UI :3080)
+   dsh-frontend dsh-tester        dashboard (task board :8080)
+   dsh-reviewer dsh-cto
+   (7 x DSH,     orchestrator      postgres
+    same image)  (API :8000)       redis
         │                │
         └────────────────┼─────────────────┘
                          │
@@ -31,7 +34,8 @@ with their own isolated workspace, coordinated by a small orchestrator
 Each agent container builds DeepSeek Harness **from source, pinned to a
 specific commit**, and runs one-shot `headless` sessions (no Web UI).
 Agents exchange work exclusively through **Git** — never through shared
-files.
+files. The `dsh-owner` container is the exception: it serves the DSH
+**Web UI interactively** for the business owner.
 
 ## Why this design
 
@@ -55,18 +59,22 @@ files.
 
 ```text
 ai-dev-team/
-├── docker-compose.yml        # 8 services: postgres, redis, orchestrator, 5 agents
+├── docker-compose.yml        # 11 services: postgres, redis, orchestrator, dashboard, owner, 7 agents
 ├── .env.example              # copy to .env; never commit .env
 ├── Makefile                  # build/up/down/demo helpers
 ├── docker/dsh/Dockerfile     # shared DSH agent image (pinned commit)
 ├── agent-runner/             # zero-dep Node runner baked into the image
-│   └── runner.js             # register -> heartbeat -> long-poll -> dsh headless
+│   ├── runner.js             # register -> heartbeat -> long-poll -> dsh headless
+│   └── web-proxy.cjs         # loopback -> eth0 proxy for the owner web UI
 ├── agents/
 │   ├── pm/AGENTS.md          # role instructions, mounted read-only into
-│   ├── backend/AGENTS.md     #   /workspace/project/AGENTS.md of the
-│   ├── frontend/AGENTS.md    #   matching container (DSH reads it as
-│   ├── tester/AGENTS.md      #   agent instructions)
+│   ├── ba/AGENTS.md          #   /workspace/project/AGENTS.md of the
+│   ├── backend/AGENTS.md     #   matching container (DSH reads it as
+│   ├── frontend/AGENTS.md    #   agent instructions)
+│   ├── tester/AGENTS.md
 │   ├── reviewer/AGENTS.md
+│   ├── cto/AGENTS.md
+│   ├── owner/AGENTS.md       # business-owner assistant (web UI)
 │   └── skills/
 │       └── git-branching/SKILL.md  # GIT BRANCHING SKILL (Git Flow model,
 │                                   #   git-flow commands + manual
@@ -75,8 +83,11 @@ ai-dev-team/
 │                                   #   of every agent container (DSH
 │                                   #   auto-discovers project skills there;
 │                                   #   AGENTS.md points each agent at it)
+├── dashboard/                # task board (nginx + static single-file UI)
+│   ├── nginx.conf            # proxies /api to the orchestrator
+│   └── html/index.html       # board: projects/tasks/agents/events
 ├── workspaces/               # one isolated project copy per agent
-│   ├── pm/  backend/  frontend/  tester/  reviewer/
+│   ├── pm/  ba/  backend/  frontend/  tester/  reviewer/  cto/  owner/
 ├── orchestrator/             # TypeScript API: task DB + dispatch + registry
 │   ├── Dockerfile
 │   ├── src/                  # server, db, redis, agents, tasks, events, git
@@ -122,6 +133,32 @@ dsh --profile headless "Inspect the repository and describe the backend architec
 `dsh` is on `PATH` (`/opt/deepseek-harness/node_modules/.bin`), and the
 invoking directory is the workspace root. `DEEPSEEK_API_KEY` is already
 in the container environment.
+
+## Business owner: how to interact with the team
+
+The owner (the human CEO) has two entry points — no curl needed:
+
+1. **Command center (chat)** — `dsh-owner` serves the DSH Web UI at
+   `http://localhost:3080`. Chat in plain language ("thêm tính năng X
+   cho khách hàng…"); the owner assistant answers in your language and
+   turns intent into tasks through the orchestrator API.
+
+   First visit needs the one-time access token printed at boot:
+
+   ```bash
+   docker logs dsh-owner 2>&1 | grep -o 'http://127.0.0.1:3080/?token=[A-Za-z0-9_-]*' | tail -1
+   # open that URL (swap 127.0.0.1 for localhost), it mints a 30-day cookie
+   ```
+
+2. **Task board** — `http://localhost:8080`: live view of projects,
+   tasks (todo / in_progress / done / failed / blocked), agents, and
+   events; create + dispatch tasks from the UI. The board proxies
+   `/api` to the orchestrator through nginx (no CORS needed).
+
+Role flow: owner → **ba** (business analyst: user stories + acceptance
+criteria) → **pm** (breaks down + dispatches) → **backend/frontend**
+(implement) → **tester** (verify) → **reviewer** (PR review) + **cto**
+(architecture review, release gate).
 
 ## How a task flows
 
