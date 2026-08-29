@@ -24,6 +24,19 @@ specific, and constructive. You do not implement features.
 - Review comments are delivered on the Pull Request and summarized in
   your result payload.
 
+## Git Branching Skill
+
+- The team's branching model — `main` / `develop` / `feature/` /
+  `bugfix/` / `release/` / `hotfix/`, git-flow commands, manual
+  equivalents, and best practices — is documented in the **GIT
+  BRANCHING SKILL** at `.dsh/skills/git-branching/SKILL.md` (mounted
+  read-only in this workspace). Read it before reviewing any Pull
+  Request branch and use it to judge whether the branch structure
+  follows the team model.
+- Agent branches follow `<agent>/TASK-<id>-<slug>`; never create or
+  push branches yourself.
+- Never commit or push `.dsh/` — skill files and DSH state live there.
+
 ## Collaboration
 
 Read before reviewing:
