@@ -55,10 +55,23 @@ WORKDIR /opt/deepseek-harness
 # Fetch the pinned revision. `git fetch origin <ref>` resolves a
 # branch, a tag, or a commit sha (GitHub allows sha fetches), so
 # DSH_REF can be any of the three.
+#
+# GitHub's negotiation for an *unadvertised* sha can hang indefinitely
+# on some connections (observed here: `git fetch --depth 1 origin <sha>`
+# stalled forever, while the identical fetch by branch completed in
+# ~1 min). So fetch the default branch shallowly first — fast and
+# reliable, and it auto-follows any tag pointing into the fetched
+# history (e.g. dsh-v0.1.2-alpha.1 -> cd5ef81). Only when DSH_REF is
+# not in the shallow history (older commit, or a tag not auto-followed)
+# do we fall back to a full-history fetch. `git checkout` resolves the
+# ref either way; the final `git log -1` proves the pin.
 RUN git init -q \
     && git remote add origin ${DSH_REPO} \
-    && git fetch -q --depth 1 origin ${DSH_REF} \
-    && git checkout -q FETCH_HEAD \
+    && git fetch -q --depth 1 origin master:refs/remotes/origin/master \
+    && (git checkout -q ${DSH_REF} 2>/dev/null \
+        || (echo "dsh: ${DSH_REF} not in shallow master history - fetching full history" \
+            && git fetch -q --unshallow origin '+refs/heads/*:refs/remotes/origin/*' '+refs/tags/*:refs/tags/*' \
+            && git checkout -q ${DSH_REF})) \
     && git log -1 --format='dsh: pinned %H %s'
 
 # Install + build DSH exactly as upstream documents:
