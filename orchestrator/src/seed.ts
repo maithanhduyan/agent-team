@@ -9,8 +9,10 @@
  *   T1 backend  -> T2 frontend shell
  *                -> T3 tester test plan
  *                -> T4 reviewer (waits for T2 as well)
+ *                -> T5 BA user stories
+ *                -> T6 CTO architecture review
  * When the backend finishes T1, the orchestrator automatically
- * dispatches T2 and T3; T4 dispatches once T1 and T2 are done.
+ * dispatches the unblocked dependents.
  */
 import { loadConfig } from './config.js';
 import { createDb } from './db.js';
@@ -57,13 +59,15 @@ async function main() {
     await createTask('Frontend: app shell with routing', 'Scaffold the frontend app shell with routing and a placeholder home page. Follow AGENTS.md.', 'frontend', [t1]);
     await createTask('QA: test plan for the skeleton', 'Write a test plan covering the backend /healthz endpoint and the frontend shell. Follow AGENTS.md.', 'tester', [t1]);
     await createTask('Review: review the skeleton PRs', 'Review the backend and frontend skeleton PRs once both exist. Verdict must be APPROVE or REQUEST CHANGES with specifics. Follow AGENTS.md.', 'reviewer', [t1]);
+    await createTask('BA: user stories and acceptance criteria for the skeleton', 'Write user stories ("As a ..., I want ..., so that ...") with measurable acceptance criteria covering the backend /healthz endpoint and the frontend shell. Update REQUIREMENTS.md. Follow AGENTS.md.', 'ba', [t1]);
+    await createTask('CTO: architecture review of the skeleton', 'Review the skeleton architecture (tech stack, module boundaries, contracts) against ARCHITECTURE.md and DECISIONS.md. Verdict must be APPROVE or REQUEST CHANGES with specifics. Follow AGENTS.md.', 'cto', [t1]);
 
     console.log('[seed] dispatching first task to backend...');
     const run = await dispatchTask({ config, db, redis }, createdIds[0]);
     if (!run)
         throw new Error('dispatch returned no run');
     console.log(`[seed] dispatched run ${run.id} for task ${createdIds[0]}`);
-    console.log('[seed] watch: docker compose logs -f dsh-backend dsh-frontend dsh-tester dsh-reviewer');
+    console.log('[seed] watch: docker compose logs -f dsh-backend dsh-frontend dsh-tester dsh-reviewer dsh-ba dsh-cto');
 
     await db.end();
     redis.disconnect();

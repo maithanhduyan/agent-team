@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ai-dev-team — Task Board</title>
+<style>
+  :root { color-scheme: dark; }
+  body { font-family: system-ui, sans-serif; margin: 0; background: #111418; color: #e6e6e6; }
+  header { display: flex; align-items: center; gap: 1rem; padding: .8rem 1.2rem; background: #1a1f26; border-bottom: 1px solid #2a3038; }
+  header h1 { font-size: 1.05rem; margin: 0; }
+  header .status { margin-left: auto; font-size: .8rem; color: #9aa4b0; }
+  .dot { display: inline-block; width: .6rem; height: .6rem; border-radius: 50%; margin-right: .3rem; vertical-align: middle; }
+  .dot.ok { background: #3fb950; } .dot.bad { background: #f85149; }
+  main { display: grid; grid-template-columns: 260px 1fr; gap: 1rem; padding: 1rem; }
+  aside section { background: #1a1f26; border: 1px solid #2a3038; border-radius: 8px; padding: .8rem; margin-bottom: 1rem; }
+  aside h2 { font-size: .85rem; text-transform: uppercase; letter-spacing: .05em; color: #9aa4b0; margin: 0 0 .6rem; }
+  aside ul { list-style: none; margin: 0; padding: 0; font-size: .85rem; }
+  aside li { padding: .25rem 0; border-bottom: 1px dashed #262d35; }
+  aside li b { color: #7ee787; }
+  label { display: block; font-size: .75rem; color: #9aa4b0; margin: .5rem 0 .2rem; }
+  input, select, textarea { width: 100%; box-sizing: border-box; background: #0f1216; color: #e6e6e6; border: 1px solid #2a3038; border-radius: 6px; padding: .4rem; font-size: .85rem; }
+  button { background: #238636; color: #fff; border: 0; border-radius: 6px; padding: .45rem .8rem; cursor: pointer; font-size: .85rem; margin-top: .6rem; }
+  button.secondary { background: #30363d; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: .8rem; }
+  .col { background: #161b21; border: 1px solid #2a3038; border-radius: 8px; padding: .6rem; }
+  .col h3 { margin: 0 0 .5rem; font-size: .8rem; text-transform: uppercase; color: #9aa4b0; }
+  .card { background: #1d232b; border: 1px solid #2a3038; border-radius: 6px; padding: .55rem; margin-bottom: .5rem; font-size: .82rem; }
+  .card .title { font-weight: 600; }
+  .card .meta { color: #9aa4b0; margin-top: .3rem; font-size: .75rem; display: flex; gap: .4rem; flex-wrap: wrap; }
+  .badge { background: #2d333b; border-radius: 4px; padding: 0 .35rem; }
+  .card button { margin: .4rem .3rem 0 0; padding: .25rem .55rem; font-size: .75rem; }
+  table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+  td, th { padding: .3rem .5rem; border-bottom: 1px solid #262d35; text-align: left; white-space: nowrap; }
+  #events { max-height: 420px; overflow: auto; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🧭 ai-dev-team · Task Board</h1>
+  <span class="status"><span class="dot" id="hdot"></span><span id="hstatus">checking…</span></span>
+</header>
+<main>
+  <aside>
+    <section>
+      <h2>Agents</h2>
+      <ul id="agents"><li>…</li></ul>
+    </section>
+    <section>
+      <h2>Projects</h2>
+      <ul id="projects"><li>…</li></ul>
+    </section>
+    <section>
+      <h2>New task</h2>
+      <label>Project id</label><input id="t_project" type="number" value="1">
+      <label>Title</label><input id="t_title" placeholder="Implement login endpoint">
+      <label>Agent</label>
+      <select id="t_agent">
+        <option>pm</option><option>ba</option><option>backend</option>
+        <option>frontend</option><option>tester</option><option>reviewer</option><option>cto</option>
+      </select>
+      <label>Priority</label>
+      <select id="t_priority"><option>low</option><option selected>medium</option><option>high</option><option>urgent</option></select>
+      <label>Description / acceptance criteria</label>
+      <textarea id="t_desc" rows="4" placeholder="As a …, I want … so that …&#10;AC1: …&#10;AC2: …"></textarea>
+      <button id="btn_task">Create & dispatch</button>
+    </section>
+  </aside>
+  <section>
+    <div class="cols" id="cols"></div>
+    <h2 style="margin-top:1rem">Recent events</h2>
+    <table><thead><tr><th>#</th><th>type</th><th>agent</th><th>task</th><th>created</th></tr></thead><tbody id="events"></tbody></table>
+  </section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const COLUMNS = [
+  ['todo', '📋 Todo'], ['in_progress', '⏳ In progress'], ['done', '✅ Done'], ['failed', '❌ Failed'], ['blocked', '⛔ Blocked'],
+];
+let agents = [];
+
+async function api(path, opts) {
+  const r = await fetch(path, Object.assign({ headers: { 'content-type': 'application/json' } }, opts));
+  if (!r.ok) throw new Error(path + ' -> ' + r.status);
+  return r.json();
+}
+
+async function refresh() {
+  try {
+    const [a, t, e] = await Promise.all([
+      api('/api/agents'), api('/api/tasks'), api('/api/events?limit=30'),
+    ]);
+    agents = a.agents || [];
+    $('hdot').className = 'dot ok'; $('hstatus').textContent = 'orchestrator OK';
+    renderAgents(agents);
+    renderTasks(t.tasks || []);
+    renderEvents(e.events || []);
+  } catch (err) {
+    $('hdot').className = 'dot bad'; $('hstatus').textContent = 'orchestrator unreachable';
+  }
+}
+
+function renderAgents(list) {
+  $('agents').innerHTML = list.map(x =>
+    `<li><b>${x.id}</b> · ${x.role} · <span class="badge">${x.status}</span></li>`).join('');
+}
+
+function renderTasks(tasks) {
+  $('cols').innerHTML = COLUMNS.map(([st, label]) => {
+    const items = tasks.filter(t => t.status === st);
+    return `<div class="col"><h3>${label} (${items.length})</h3>` +
+      items.map(t => {
+        const canDispatch = ['todo', 'failed', 'blocked'].includes(t.status) && t.assigned_agent;
+        return `<div class="card">
+          <div class="title">#${t.id} ${t.title}</div>
+          <div class="meta"><span class="badge">${t.assigned_agent || 'unassigned'}</span>
+          <span class="badge">${t.priority}</span><span class="badge">p${t.project_id}</span></div>
+          <button class="secondary" onclick="dispatch(${t.id})" ${canDispatch ? '' : 'disabled'}>dispatch</button>
+        </div>`;
+      }).join('') + `</div>`;
+  }).join('');
+}
+
+async function dispatch(id) {
+  await api('/api/tasks/' + id + '/dispatch', { method: 'POST' });
+  refresh();
+}
+
+async function createTask() {
+  const body = {
+    project_id: Number($('t_project').value || 1),
+    title: $('t_title').value.trim(),
+    assigned_agent: $('t_agent').value,
+    priority: $('t_priority').value,
+    description: $('t_desc').value.trim(),
+  };
+  if (!body.title) return alert('Title is required');
+  const task = await api('/api/tasks', { method: 'POST', body: JSON.stringify(body) });
+  await api('/api/tasks/' + task.id + '/dispatch', { method: 'POST' });
+  $('t_title').value = ''; $('t_desc').value = '';
+  refresh();
+}
+
+function renderEvents(events) {
+  $('events').innerHTML = events.map(e =>
+    `<tr><td>${e.id}</td><td>${e.type}</td><td>${e.agent_id || ''}</td><td>${e.task_id || ''}</td><td>${new Date(e.created_at).toLocaleString()}</td></tr>`
+  ).join('');
+}
+
+$('btn_task').onclick = createTask;
+refresh();
+setInterval(refresh, 5000);
+</script>
+</body>
+</html>
