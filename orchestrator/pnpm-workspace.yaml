@@ -1,0 +1,6 @@
+# pnpm 10+ blocks any dependency shipping an install/build script until it is
+# explicitly allowed here (strictDepBuilds): an unlisted script is a hard
+# install error. esbuild (native binary, pulled in by tsx) genuinely needs
+# its postinstall, so allow it.
+allowBuilds:
+  esbuild: true
