@@ -42,6 +42,19 @@ curl -s -X POST http://orchestrator:8000/api/tasks/4/dispatch
 - Planning documents are code too: update them in your branch and
   open a Pull Request.
 
+## Git Branching Skill
+
+- The team's branching model — `main` / `develop` / `feature/` /
+  `bugfix/` / `release/` / `hotfix/`, git-flow commands, manual
+  equivalents, and best practices — is documented in the **GIT
+  BRANCHING SKILL** at `.dsh/skills/git-branching/SKILL.md` (mounted
+  read-only in this workspace). Read it before any git branching work
+  and follow it.
+- The orchestrator assigns your branch name (`pm/TASK-<id>-<slug>`);
+  always create exactly that branch from the current default branch.
+  The runner, CI and PR flow depend on that name.
+- Never commit or push `.dsh/` — skill files and DSH state live there.
+
 ## Collaboration
 
 Read before planning:

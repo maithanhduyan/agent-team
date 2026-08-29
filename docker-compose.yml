@@ -128,6 +128,7 @@ services:
     volumes:
       - ./workspaces/pm:/workspace/project
       - ./agents/pm/AGENTS.md:/workspace/project/AGENTS.md:ro
+      - ./agents/skills/git-branching/SKILL.md:/workspace/project/.dsh/skills/git-branching/SKILL.md:ro
 
   # ==========================================================
   # Backend Agent
@@ -147,6 +148,7 @@ services:
     volumes:
       - ./workspaces/backend:/workspace/project
       - ./agents/backend/AGENTS.md:/workspace/project/AGENTS.md:ro
+      - ./agents/skills/git-branching/SKILL.md:/workspace/project/.dsh/skills/git-branching/SKILL.md:ro
 
   # ==========================================================
   # Frontend Agent
@@ -166,6 +168,7 @@ services:
     volumes:
       - ./workspaces/frontend:/workspace/project
       - ./agents/frontend/AGENTS.md:/workspace/project/AGENTS.md:ro
+      - ./agents/skills/git-branching/SKILL.md:/workspace/project/.dsh/skills/git-branching/SKILL.md:ro
 
   # ==========================================================
   # Tester Agent
@@ -185,6 +188,7 @@ services:
     volumes:
       - ./workspaces/tester:/workspace/project
       - ./agents/tester/AGENTS.md:/workspace/project/AGENTS.md:ro
+      - ./agents/skills/git-branching/SKILL.md:/workspace/project/.dsh/skills/git-branching/SKILL.md:ro
 
   # ==========================================================
   # Reviewer Agent
@@ -204,6 +208,7 @@ services:
     volumes:
       - ./workspaces/reviewer:/workspace/project
       - ./agents/reviewer/AGENTS.md:/workspace/project/AGENTS.md:ro
+      - ./agents/skills/git-branching/SKILL.md:/workspace/project/.dsh/skills/git-branching/SKILL.md:ro
 
 networks:
   ai-team:

@@ -66,7 +66,15 @@ ai-dev-team/
 │   ├── backend/AGENTS.md     #   /workspace/project/AGENTS.md of the
 │   ├── frontend/AGENTS.md    #   matching container (DSH reads it as
 │   ├── tester/AGENTS.md      #   agent instructions)
-│   └── reviewer/AGENTS.md
+│   ├── reviewer/AGENTS.md
+│   └── skills/
+│       └── git-branching/SKILL.md  # GIT BRANCHING SKILL (Git Flow model,
+│                                   #   git-flow commands + manual
+│                                   #   equivalents), mounted read-only into
+│                                   #   /workspace/project/.dsh/skills/...
+│                                   #   of every agent container (DSH
+│                                   #   auto-discovers project skills there;
+│                                   #   AGENTS.md points each agent at it)
 ├── workspaces/               # one isolated project copy per agent
 │   ├── pm/  backend/  frontend/  tester/  reviewer/
 ├── orchestrator/             # TypeScript API: task DB + dispatch + registry
