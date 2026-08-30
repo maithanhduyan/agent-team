@@ -1,0 +1,8 @@
+# Build context: backend/ — keep the image small.
+.git
+**/node_modules
+**/dist
+.env
+test
+scripts
+*.md

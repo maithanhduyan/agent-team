@@ -76,6 +76,10 @@ ai-dev-team/
 ├── agent-runner/             # zero-dep Node runner baked into the image
 │   ├── runner.js             # register -> heartbeat -> long-poll -> dsh headless
 │   └── web-proxy.cjs         # loopback -> eth0 proxy for the owner web UI
+├── backend/                  # demo-project backend service skeleton (Fastify)
+│   ├── src/                  # app factory + server entrypoint (/healthz -> {"ok":true})
+│   ├── test/                 # unit tests (node:test + Fastify inject)
+│   └── scripts/smoke.mjs     # real-HTTP smoke test for /healthz
 ├── agents/
 │   ├── pm/AGENTS.md          # role instructions, mounted read-only into
 │   ├── ba/AGENTS.md          #   /workspace/project/AGENTS.md of the
@@ -121,6 +125,27 @@ ai-dev-team/
 └── data/                     # reserved for bind-mount deployments
     ├── postgres/  redis/     #   (compose uses named volumes by default)
 ```
+
+## Backend service
+
+`backend/` is the demo-project backend service skeleton (Node.js 20+,
+TypeScript, Fastify 5 — same stack as the orchestrator). It exposes a
+pure liveness endpoint:
+
+```bash
+cd backend
+pnpm install && pnpm check   # typecheck + unit tests + real-HTTP smoke test
+pnpm start                   # listens on 0.0.0.0:4000 (or BACKEND_PORT)
+curl http://localhost:4000/healthz   # -> {"ok":true}
+```
+
+- `GET /healthz` → `200 {"ok": true}` (no external dependencies, answers
+  as soon as the process is up).
+- The smoke test (`pnpm smoke`) boots the compiled server, performs a real
+  HTTP `GET /healthz`, asserts the JSON contract, and verifies graceful
+  shutdown.
+- Not yet wired into the compose stack; see `backend/README.md` and
+  `DECISIONS.md` (ADR-001).
 
 ## Prerequisites
 
