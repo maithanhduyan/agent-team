@@ -1,0 +1,30 @@
+# ==========================================================
+# Shared DSH home-level patch layer (mounted at
+# $DSH_HOME/cordis.patch.yml of selected agent containers).
+#
+# DSH applies this layer to EVERY profile, so both the headless
+# profile (agent runner) and the web profile (owner UI) pick up
+# the tools below. Missing file = no layer; a read-only mount is
+# fine because DSH never writes this file.
+#
+# What it does: attaches the Redmine MCP server through the
+# built-in @deepseek-ai/dsh-mcp-client plugin. The MCP server
+# (service `redmine-mcp`) holds the Redmine API key; agents never
+# see credentials. Tools appear in agent sessions as
+# mcp__redmine__<tool>, e.g. mcp__redmine__list_redmine_projects.
+#
+# Only agents that need Redmine directly mount this file:
+# dsh-pm, dsh-ba, dsh-tester, dsh-cto, dsh-owner.
+# ==========================================================
+
+- insert:
+    - id: mcp-redmine
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: redmine
+        transport: streamable-http
+        url: http://redmine-mcp:8000/mcp
+        # Default failOnStartupError: false — a down Redmine/MCP
+        # server must never block the agent from booting; the
+        # tools simply do not appear and the mcp-client
+        # auto-reconnects with backoff.

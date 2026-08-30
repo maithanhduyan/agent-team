@@ -1,0 +1,48 @@
+# ==========================================================
+# Tester agent's DSH home-level patch layer (mounted at
+# $DSH_HOME/cordis.patch.yml of dsh-tester).
+#
+# = Redmine = the team tracker (same entries as the shared
+#   patch, so the tester keeps its Redmine bridge).
+# = Playwright = browser automation for UI testing via the
+#   playwright-mcp service (streamable-http). Tools appear as
+#   mcp__playwright__<tool>, e.g. mcp__playwright__browser_navigate.
+# ==========================================================
+
+- insert:
+    - id: mcp-redmine
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: redmine
+        transport: streamable-http
+        url: http://redmine-mcp:8000/mcp
+        # Default failOnStartupError: false — a down Redmine/MCP
+        # server must never block the agent from booting; the
+        # tools simply do not appear and the mcp-client
+        # auto-reconnects with backoff.
+
+    - id: mcp-playwright
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: playwright
+        transport: streamable-http
+        url: http://playwright-mcp:8931/mcp
+        # Browser automation calls (navigate/snapshot/click) can
+        # take a while on cold starts — raise the per-tool cap.
+        toolCallTimeoutMs: 120000
+        # Same fail-open policy as redmine: a down browser server
+        # must not block the agent from booting.
+        failOnStartupError: false
+
+    - id: mcp-github
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: github
+        transport: streamable-http
+        url: http://github-mcp:8989/mcp
+        headers:
+          # !!js is the cordis config-loader expression tag; the
+          # token is read from the agent's environment at boot,
+          # never written into this file.
+          Authorization: !!js "`Bearer ${process.env.GITHUB_TOKEN}`"
+        failOnStartupError: false

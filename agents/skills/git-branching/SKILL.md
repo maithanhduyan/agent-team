@@ -363,6 +363,26 @@ develop ────●────●────●────●────
 feature/bugfix   ●────┘    ●──────┘
 ```
 
+## Xác thực GitHub khi push
+
+- Trong môi trường agent container, `GITHUB_TOKEN` có sẵn trong
+  environment. Runner đã cấu hình sẵn remote `origin` nhúng token
+  (`https://x-access-token:<token>@github.com/...`), nên `git push`
+  hoạt động trực tiếp, không cần `gh auth login`.
+- Nếu push bị từ chối (HTTP 403/401): kiểm tra
+  `git remote -v` có chứa `x-access-token` không; token hết hạn, hoặc
+  thiếu scope `Contents: Read and write` cho repo đó.
+- Mở Pull Request bằng API (không cần `gh` CLI):
+  ```bash
+  curl -fsS -X POST \
+    -H "Authorization: Bearer $GITHUB_TOKEN" \
+    -H "Accept: application/vnd.github+json" \
+    https://api.github.com/repos/<owner>/<repo>/pulls \
+    -d '{"title":"<tiêu đề>","head":"<branch>","base":"main"}'
+  ```
+- Không bao giờ in token vào log, commit message, hay file trong repo.
+  Token chỉ nên nằm trong environment và git config của workspace.
+
 ## Tips & Best Practices
 
 1. **Luôn pull trước khi tạo branch mới**

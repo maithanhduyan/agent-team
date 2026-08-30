@@ -50,6 +50,16 @@ agents cannot see your files. Everything you want to hand off must
 reach the repository through Git (branch + Pull Request). Before
 modifying architecture, record the decision in `DECISIONS.md`.
 
+## GitHub (MCP)
+
+The team works with GitHub through the official **GITHUB WORKFLOW
+SKILL** at `.dsh/skills/github-workflow/SKILL.md` (mounted read-only)
+and `mcp__github__*` tools (e.g. `mcp__github__create_pull_request`,
+`get_me`). Prefer the MCP tools over raw `curl` for PR/issue work;
+fall back to `curl` with `$GITHUB_TOKEN` only when the bridge is
+down, and note it. PRs target `develop` and their titles start with
+`TASK-<id>:`. Report the PR URL in your final summary.
+
 ## Completion
 
 A task is complete only when:

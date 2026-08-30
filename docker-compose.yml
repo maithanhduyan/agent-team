@@ -7,6 +7,7 @@
 #        |
 #  postgres  redis  orchestrator  dsh-pm  dsh-backend
 #                                 dsh-frontend  dsh-tester  dsh-reviewer
+#  redmine-db  redmine  redmine-mcp  (project management + MCP bridge)
 #
 # All five dsh-* services run the SAME image (docker/dsh/Dockerfile)
 # built from a pinned DSH commit; each is differentiated only by
@@ -94,6 +95,12 @@ services:
       REDIS_URL: redis://redis:6379
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       GITLAB_TOKEN: ${GITLAB_TOKEN:-}
+      # Read by the demo seed (node dist/seed.js) to set the project's
+      # repository_url, which makes agents push branches and open PRs.
+      SEED_REPOSITORY_URL: ${SEED_REPOSITORY_URL:-}
+      # Default branch of the seeded repository (used as the PR base
+      # and the workspace's initial branch). Defaults to main.
+      SEED_DEFAULT_BRANCH: ${SEED_DEFAULT_BRANCH:-main}
     ports:
       - "8000:8000"
     depends_on:
@@ -119,6 +126,12 @@ services:
     container_name: dsh-pm
     environment:
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:?Set DEEPSEEK_API_KEY in .env}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      # No sandbox backend (bubblewrap/Landlock) exists in this container,
+      # and DSH fails closed for confined modes; danger-full-access runs
+      # bash unconfined. Prototype-only: each agent is already isolated by
+      # its own container + workspace (see README -> Security notes).
+      DSH_PERMISSION_MODE: danger-full-access
       AGENT_ID: pm
       AGENT_ROLE: project-manager
       ORCHESTRATOR_URL: http://orchestrator:8000
@@ -129,6 +142,7 @@ services:
       - ./workspaces/pm:/workspace/project
       - ./agents/pm/AGENTS.md:/workspace/project/AGENTS.md:ro
       - ./agents/skills/git-branching/SKILL.md:/workspace/project/.dsh/skills/git-branching/SKILL.md:ro
+      - ./agents/shared/cordis.patch.yml:/home/dsh/.dsh/cordis.patch.yml:ro
 
   # ==========================================================
   # Backend Agent
@@ -139,6 +153,8 @@ services:
     container_name: dsh-backend
     environment:
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:?Set DEEPSEEK_API_KEY in .env}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      DSH_PERMISSION_MODE: danger-full-access
       AGENT_ID: backend
       AGENT_ROLE: backend-developer
       ORCHESTRATOR_URL: http://orchestrator:8000
@@ -149,6 +165,9 @@ services:
       - ./workspaces/backend:/workspace/project
       - ./agents/backend/AGENTS.md:/workspace/project/AGENTS.md:ro
       - ./agents/skills/git-branching/SKILL.md:/workspace/project/.dsh/skills/git-branching/SKILL.md:ro
+      - ./agents/skills/github-workflow/SKILL.md:/workspace/project/.dsh/skills/github-workflow/SKILL.md:ro
+      # GitHub MCP bridge (see agents/shared/github.patch.yml)
+      - ./agents/shared/github.patch.yml:/home/dsh/.dsh/cordis.patch.yml:ro
 
   # ==========================================================
   # Frontend Agent
@@ -159,6 +178,8 @@ services:
     container_name: dsh-frontend
     environment:
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:?Set DEEPSEEK_API_KEY in .env}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      DSH_PERMISSION_MODE: danger-full-access
       AGENT_ID: frontend
       AGENT_ROLE: frontend-developer
       ORCHESTRATOR_URL: http://orchestrator:8000
@@ -169,6 +190,9 @@ services:
       - ./workspaces/frontend:/workspace/project
       - ./agents/frontend/AGENTS.md:/workspace/project/AGENTS.md:ro
       - ./agents/skills/git-branching/SKILL.md:/workspace/project/.dsh/skills/git-branching/SKILL.md:ro
+      - ./agents/skills/github-workflow/SKILL.md:/workspace/project/.dsh/skills/github-workflow/SKILL.md:ro
+      # GitHub MCP bridge (see agents/shared/github.patch.yml)
+      - ./agents/shared/github.patch.yml:/home/dsh/.dsh/cordis.patch.yml:ro
 
   # ==========================================================
   # Tester Agent
@@ -179,6 +203,8 @@ services:
     container_name: dsh-tester
     environment:
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:?Set DEEPSEEK_API_KEY in .env}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      DSH_PERMISSION_MODE: danger-full-access
       AGENT_ID: tester
       AGENT_ROLE: qa-engineer
       ORCHESTRATOR_URL: http://orchestrator:8000
@@ -189,6 +215,9 @@ services:
       - ./workspaces/tester:/workspace/project
       - ./agents/tester/AGENTS.md:/workspace/project/AGENTS.md:ro
       - ./agents/skills/git-branching/SKILL.md:/workspace/project/.dsh/skills/git-branching/SKILL.md:ro
+      - ./agents/skills/ui-testing/SKILL.md:/workspace/project/.dsh/skills/ui-testing/SKILL.md:ro
+      # Redmine + Playwright MCP bridges (see agents/tester/cordis.patch.yml)
+      - ./agents/tester/cordis.patch.yml:/home/dsh/.dsh/cordis.patch.yml:ro
 
   # ==========================================================
   # Reviewer Agent
@@ -199,6 +228,8 @@ services:
     container_name: dsh-reviewer
     environment:
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:?Set DEEPSEEK_API_KEY in .env}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      DSH_PERMISSION_MODE: danger-full-access
       AGENT_ID: reviewer
       AGENT_ROLE: code-reviewer
       ORCHESTRATOR_URL: http://orchestrator:8000
@@ -209,6 +240,9 @@ services:
       - ./workspaces/reviewer:/workspace/project
       - ./agents/reviewer/AGENTS.md:/workspace/project/AGENTS.md:ro
       - ./agents/skills/git-branching/SKILL.md:/workspace/project/.dsh/skills/git-branching/SKILL.md:ro
+      - ./agents/skills/github-workflow/SKILL.md:/workspace/project/.dsh/skills/github-workflow/SKILL.md:ro
+      # GitHub MCP bridge (see agents/shared/github.patch.yml)
+      - ./agents/shared/github.patch.yml:/home/dsh/.dsh/cordis.patch.yml:ro
 
   # ==========================================================
   # BA Agent (business analyst)
@@ -219,6 +253,8 @@ services:
     container_name: dsh-ba
     environment:
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:?Set DEEPSEEK_API_KEY in .env}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      DSH_PERMISSION_MODE: danger-full-access
       AGENT_ID: ba
       AGENT_ROLE: business-analyst
       ORCHESTRATOR_URL: http://orchestrator:8000
@@ -229,6 +265,7 @@ services:
       - ./workspaces/ba:/workspace/project
       - ./agents/ba/AGENTS.md:/workspace/project/AGENTS.md:ro
       - ./agents/skills/git-branching/SKILL.md:/workspace/project/.dsh/skills/git-branching/SKILL.md:ro
+      - ./agents/shared/cordis.patch.yml:/home/dsh/.dsh/cordis.patch.yml:ro
 
   # ==========================================================
   # CTO Agent (architect)
@@ -239,6 +276,8 @@ services:
     container_name: dsh-cto
     environment:
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:?Set DEEPSEEK_API_KEY in .env}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      DSH_PERMISSION_MODE: danger-full-access
       AGENT_ID: cto
       AGENT_ROLE: architect
       ORCHESTRATOR_URL: http://orchestrator:8000
@@ -249,6 +288,7 @@ services:
       - ./workspaces/cto:/workspace/project
       - ./agents/cto/AGENTS.md:/workspace/project/AGENTS.md:ro
       - ./agents/skills/git-branching/SKILL.md:/workspace/project/.dsh/skills/git-branching/SKILL.md:ro
+      - ./agents/shared/cordis.patch.yml:/home/dsh/.dsh/cordis.patch.yml:ro
 
   # ==========================================================
   # Business owner command center (DSH Web UI, interactive)
@@ -264,6 +304,8 @@ services:
     user: "0:0"
     environment:
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:?Set DEEPSEEK_API_KEY in .env}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      DSH_PERMISSION_MODE: danger-full-access
       AGENT_ID: owner
       AGENT_ROLE: business-owner-assistant
       ORCHESTRATOR_URL: http://orchestrator:8000
@@ -274,6 +316,7 @@ services:
       - ./agents/owner/AGENTS.md:/workspace/project/AGENTS.md:ro
       - ./agents/skills/git-branching/SKILL.md:/workspace/project/.dsh/skills/git-branching/SKILL.md:ro
       - ./agent-runner/web-proxy.cjs:/opt/agent-runner/web-proxy.cjs:ro
+      - ./agents/shared/cordis.patch.yml:/home/dsh/.dsh/cordis.patch.yml:ro
       - dsh_owner_home:/home/dsh/.dsh
     ports:
       - "3080:3081"
@@ -308,6 +351,129 @@ services:
     networks:
       - ai-team
 
+  # ==========================================================
+  # Redmine project management (human-facing UI at
+  # http://localhost:3000). The orchestrator task DB remains the
+  # system of record for agent work; Redmine is the layer for
+  # humans (issues, wiki, Gantt, time tracking) that the
+  # pm/ba/tester/cto agents reach through the MCP bridge below.
+  # ==========================================================
+
+  redmine-db:
+    image: postgres:17-alpine
+    container_name: ai-team-redmine-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: redmine
+      POSTGRES_USER: redmine
+      POSTGRES_PASSWORD: ${REDMINE_DB_PASSWORD:-redmine_password}
+    volumes:
+      - redmine_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U redmine -d redmine"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - ai-team
+
+  redmine:
+    image: redmine:6.0-alpine
+    container_name: ai-team-redmine
+    restart: unless-stopped
+    environment:
+      REDMINE_DB_POSTGRES: redmine-db
+      REDMINE_DB_DATABASE: redmine
+      REDMINE_DB_USERNAME: redmine
+      REDMINE_DB_PASSWORD: ${REDMINE_DB_PASSWORD:-redmine_password}
+      # Stable session secret across container recreations;
+      # generate one with `openssl rand -hex 32`.
+      REDMINE_SECRET_KEY: ${REDMINE_SECRET_KEY:-}
+    ports:
+      - "${REDMINE_PORT:-3000}:3000"
+    depends_on:
+      redmine-db:
+        condition: service_healthy
+    healthcheck:
+      # Redmine responds on /login once Rails is up; any HTTP
+      # response (200/302) means the app is ready.
+      test: ["CMD-SHELL", "ruby -rnet/http -e 'begin; Net::HTTP.get_response(URI(\"http://localhost:3000/login\")); exit 0; rescue; exit 1; end'"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 60s
+    networks:
+      - ai-team
+
+  # ==========================================================
+  # Redmine MCP bridge (streamable-http at :8000/mcp, internal
+  # only — NOT published to the host). Holds the Redmine API key;
+  # DSH agents reach Redmine through mcp__redmine__* tools and
+  # never see the key themselves. Pin the image tag for
+  # reproducible builds (third-party image, MIT).
+  # ==========================================================
+
+  redmine-mcp:
+    image: ghcr.io/jztan/redmine-mcp-server:${REDMINE_MCP_IMAGE_TAG:-2.13.0}
+    container_name: ai-team-redmine-mcp
+    restart: unless-stopped
+    environment:
+      REDMINE_URL: http://redmine:3000
+      REDMINE_API_KEY: ${REDMINE_API_KEY:-}
+      REDMINE_MCP_READ_ONLY: "false"
+      SERVER_HOST: 0.0.0.0
+      SERVER_PORT: 8000
+    depends_on:
+      redmine:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+    networks:
+      - ai-team
+
+  # ==========================================================
+  # Playwright MCP (streamable-http at :8931/mcp, internal only
+  # — NOT published to the host). Drives a headless Chromium for
+  # the tester agent's UI tests; screenshots land in the shared
+  # artifacts dir which is also mounted into the tester's
+  # workspace (./workspaces/tester/artifacts).
+  # ==========================================================
+
+  playwright-mcp:
+    build:
+      context: .
+      dockerfile: docker/playwright-mcp/Dockerfile
+    image: ai-team/playwright-mcp:local
+    container_name: ai-team-playwright-mcp
+    restart: unless-stopped
+    volumes:
+      - ./workspaces/tester/artifacts:/artifacts
+    networks:
+      - ai-team
+
+  # ==========================================================
+  # GitHub MCP server (streamable-http at :8989/mcp, internal
+  # only — NOT published to the host). Official server, holds
+  # GITHUB_TOKEN; agents authenticate with the same token via
+  # the Authorization header in agents/shared/github.patch.yml.
+  # Pin the image digest for reproducible builds (MIT).
+  # ==========================================================
+
+  github-mcp:
+    image: ghcr.io/github/github-mcp-server@sha256:fbec75de11c255213fa08d80fb166abe73d851fff631c51c0079872967720699
+    container_name: ai-team-github-mcp
+    restart: unless-stopped
+    environment:
+      GITHUB_PERSONAL_ACCESS_TOKEN: ${GITHUB_TOKEN:-}
+      GITHUB_TOOLSETS: default,actions
+    command: ["http", "--port", "8989"]
+    networks:
+      - ai-team
+
 networks:
   ai-team:
     driver: bridge
@@ -315,4 +481,5 @@ networks:
 volumes:
   postgres_data:
   redis_data:
+  redmine_db_data:
   dsh_owner_home:
