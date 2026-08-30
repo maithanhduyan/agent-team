@@ -5,9 +5,13 @@ newest first.
 
 > **Ownership:** the **cto** agent owns this file and
 > `ARCHITECTURE.md` (see `agents/cto/AGENTS.md`). Any agent may
-> propose an ADR (append a candidate entry to the PR that implements
-> the change, as the backend agent did for ADR-001); the cto approves
-> and folds it into the canonical file during architecture review.
+> **propose** an ADR (append a candidate entry to the PR that
+> implements the change); the cto **approves and assigns the final
+> ADR number** when folding it into the canonical file during
+> architecture review. Parallel PRs therefore never fight over
+> numbers: proposals keep their working numbers on the branch and are
+> renumbered on merge (e.g. ADR-001 from the backend skeleton PR,
+> ADR-002/ADR-003 from the BA PR — all adopted below).
 >
 > **History note:** earlier decisions (TASK-014 feasibility, TASK-015
 > roadmap) were written on the `cto/TASK-014-*` / `pm/TASK-015-*`
@@ -15,7 +19,7 @@ newest first.
 > that context; the TASK-179 review is recorded in
 > `ARCHITECTURE.md` §6.
 
-## ADR-006 — Canonical architecture docs restored; missing-docs gap closed (TASK-179)
+## ADR-008 — Canonical architecture docs restored; missing-docs gap closed (TASK-179)
 
 - **Status:** accepted (TASK-179, cto)
 - **Date:** 2026-08-30
@@ -31,14 +35,14 @@ newest first.
   - Architecture reviews of agent PRs are recorded here /
     in `ARCHITECTURE.md`; verdicts stay binary **APPROVE** or
     **REQUEST CHANGES** with file/line specifics.
-  - `REQUIREMENTS.md` is the BA's deliverable (demo task T5) —
-    tracked separately; the prompt reference stays valid once it
-    lands.
+  - `REQUIREMENTS.md` is the BA's deliverable (TASK-178, PR #3) —
+    its user stories and acceptance criteria are the requirements
+    baseline for the skeleton.
 - **Consequences:** the docs baseline now exists; the TASK-179
   review is APPROVE with non-blocking findings F1–F6 (see
   `ARCHITECTURE.md` §6).
 
-## ADR-005 — CI is required before any release; current gap tracked (TASK-179 / TASK-144)
+## ADR-007 — CI is required before any release; current gap tracked (TASK-179 / TASK-144)
 
 - **Status:** accepted, **gate open** (TASK-179, cto)
 - **Date:** 2026-08-30
@@ -57,7 +61,7 @@ newest first.
 - **Consequences:** "no CI" remains tracked tech debt (§7.2 of
   `ARCHITECTURE.md`) until the workflow lands.
 
-## ADR-004 — Confidential agents: workspace-local deliverables, no push/PR (TASK-179 / accountant)
+## ADR-006 — Confidential agents: workspace-local deliverables, no push/PR (accountant)
 
 - **Status:** accepted (TASK-179 review)
 - **Date:** 2026-08-30
@@ -79,7 +83,7 @@ newest first.
 - **Consequences:** the read-only/no-push posture is enforced at the
   prompt level, so it holds even if a skill or AGENTS.md copy drifts.
 
-## ADR-003 — Redmine ↔ orchestrator two-way sync (TASK-179 review of #53f8c11)
+## ADR-005 — Redmine ↔ orchestrator two-way sync (TASK-179 review of #53f8c11)
 
 - **Status:** accepted (TASK-179 review)
 - **Date:** 2026-08-30
@@ -103,7 +107,7 @@ newest first.
   the seeded Redmine project (`orchestrator/src/redmine.ts:24-28`) —
   tracked cleanup (F6), no contract impact.
 
-## ADR-002 — Compose split into layers + profiles (TASK-179 review of #53f8c11)
+## ADR-004 — Compose split into layers + profiles (TASK-179 review of #53f8c11)
 
 - **Status:** accepted (TASK-179 review)
 - **Date:** 2026-08-30
@@ -120,7 +124,55 @@ newest first.
   `make agents`, `make integrations`, `make up` for full); profiles
   keep the default `docker compose up -d` to core-only.
 
-## ADR-001 — Backend service skeleton: standalone Fastify package (TASK-174, proposed by backend agent)
+## ADR-003 — Frontend shell scope: routing is required, styling is not (TASK-178, BA)
+
+- **Status:** accepted (TASK-178, ba; adopted by cto in TASK-179)
+- **Date:** 2026-08
+- **Context:** the seed task for the frontend shell asks for "app
+  shell with routing and a placeholder home page". The first shell
+  iteration (TASK-002) shipped a working Vite + React placeholder
+  with a hello button but **no router**, so the routing requirement
+  was not actually met. The QA test plan for the skeleton must verify
+  routing.
+- **Decision (BA scope):**
+  - The frontend shell **must** provide client-side routing with a
+    home route at `/` (US-FE-003 in `REQUIREMENTS.md`). The library
+    is the implementer's choice (react-router or equivalent,
+    documented).
+  - The established stack and conventions stay: Vite + React +
+    TypeScript, heading "Agent Team App", placeholder text "React
+    app shell is mounted.", and the `hello-btn` interaction.
+  - Styling framework, design system, real pages, and backend
+    integration are **out of scope** for the skeleton.
+- **Consequences:** the frontend agent's deliverable now has a
+  measurable routing acceptance criterion; the tester must exercise
+  it (navigate `/`, navigate to an unknown path) in the QA test plan.
+
+## ADR-002 — Skeleton scope: liveness-only health endpoint (TASK-178, BA)
+
+- **Status:** accepted (TASK-178, ba; adopted by cto in TASK-179)
+- **Date:** 2026-08
+- **Context:** the backend skeleton exposes `GET /healthz` returning
+  `{"ok": true}`. The BA must pin down what this endpoint is *for*
+  so that operators, the QA plan, and future work agree on the
+  contract.
+- **Decision (BA scope):**
+  - `/healthz` is a **liveness probe**: it reports that the service
+    process is up and can serve requests, and it must answer without
+    the database or any external dependency (US-BE-002 in
+    `REQUIREMENTS.md`). This matches the implemented behaviour and
+    ADR-001; it differs intentionally from the orchestrator's
+    DB-checked `/healthz`.
+  - The skeleton requires **no readiness probe**, no authentication,
+    no data endpoints, and no compose wiring for the backend service
+    yet — those are out of scope (see `REQUIREMENTS.md` §5).
+- **Consequences:** "Is the service alive?" and "is the whole stack
+  ready?" are separate questions; a readiness probe is a documented
+  follow-up once the service gains real dependencies. The QA test
+  plan for `/healthz` (unit + smoke + dependency-free start) can be
+  derived directly from `REQUIREMENTS.md` §3.1.
+
+## ADR-001 — Backend service skeleton: standalone Fastify package (TASK-174, backend agent)
 
 - **Status:** accepted (TASK-174; adopted by cto in TASK-179)
 - **Date:** 2026-08

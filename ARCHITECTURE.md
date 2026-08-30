@@ -206,9 +206,10 @@ on orchestrator boot (`orchestrator/src/migrate.ts`).
 
 Scope reviewed: the platform skeleton on `develop` (compose layers,
 orchestrator, agent runner, agents, MCP bridges, Redmine sync,
-SECURITY.md/CONDUCT.md) and the backend service skeleton proposed in
-PR #2 (`backend/`, TASK-174). Baseline: this file, `DECISIONS.md`,
-`README.md`, and the TASK-014 feasibility analysis.
+SECURITY.md/CONDUCT.md), the backend service skeleton proposed in
+PR #2 (`backend/`, TASK-174), and the BA's requirements baseline
+(`REQUIREMENTS.md`, PR #3, TASK-178). Baseline: this file,
+`DECISIONS.md`, `README.md`, and the TASK-014 feasibility analysis.
 
 ### Verdict: **APPROVE**
 
@@ -239,7 +240,7 @@ internally consistent and match the documented design:
 
 | # | Finding | Evidence | Resolution |
 |---|---|---|---|
-| F1 | Canonical docs missing from `develop`: `ARCHITECTURE.md`, `DECISIONS.md`, `REQUIREMENTS.md` do not exist, yet every task prompt instructs agents to read them | `orchestrator/src/git.ts:42`; `git ls-tree develop` | This PR restores `ARCHITECTURE.md` + `DECISIONS.md`; `REQUIREMENTS.md` is the BA task (T5) deliverable — track to completion |
+| F1 | Canonical docs missing from `develop`: `ARCHITECTURE.md`, `DECISIONS.md`, `REQUIREMENTS.md` do not exist, yet every task prompt instructs agents to read them | `orchestrator/src/git.ts:42`; `git ls-tree develop` | This PR restores `ARCHITECTURE.md` + `DECISIONS.md`; `REQUIREMENTS.md` is delivered in the BA PR #3 (TASK-178) — track to merge |
 | F2 | CI workflow was built (TASK-144) but never merged: `.github/workflows/ci.yml` exists only on the unpushed `cto/TASK-144-*` branch; Redmine #14 was closed prematurely | `git ls-tree -r origin/develop | grep .github` → none; Redmine #14 status=Closed | Land CI (orchestrator build/typecheck, runner `node --check`, orchestrator image build) on `develop` before any `release/`; this is a **release gate** |
 | F3 | Backend skeleton (PR #2) is standalone and not wired into the running stack | `backend/README.md`, DECISIONS.md ADR-001 (accepted consequence) | Required follow-up: add a `backend` compose service + use `/healthz` as its healthcheck when the skeleton graduates |
 | F4 | `.gitignore` on `develop` lacks `.dsh/` and `.agent-team/` (the ignore commit `8eb214d` lives on an unmerged branch), so an agent `git add -A` can commit DSH state (run logs, config) | `.gitignore`; `git log origin/develop -- .gitignore` | Fixed in this PR (add `.dsh/`, `.agent-team/`, `.pnpm-store/`) |
@@ -253,8 +254,11 @@ The `backend/` package (Fastify 5, pure liveness `/healthz` →
 smoke, multi-stage Dockerfile, `BACKEND_PORT` config) follows the
 orchestrator conventions and its contract is minimal and testable.
 The root `DECISIONS.md` added by the backend agent is adopted into
-the canonical file (ADR-001); going forward, ADR entries are proposed
-by any agent but **approved/owned by the cto** (see `DECISIONS.md`).
+the canonical file (ADR-001), and the BA's scope ADRs from PR #3 are
+adopted as ADR-002/ADR-003. Going forward, ADR entries are proposed
+by any agent but **numbered, approved, and owned by the cto** on
+merge (see `DECISIONS.md`), so parallel PRs never fight over ADR
+numbers.
 
 ## 7. Technical debt & production-readiness (tracked)
 
