@@ -2,7 +2,8 @@
 # ai-dev-team — integrations (profile: integrations)
 #
 # Redmine (project management) + the MCP bridges the agents use
-# (redmine, playwright for UI testing, github for PR/issues).
+# (redmine, playwright for UI testing, github for PR/issues,
+# odoo for the accountant agent's monthly closing reports).
 # Included from compose.yaml; enable with:
 #   docker compose --profile integrations up -d
 # ==========================================================
@@ -133,6 +134,54 @@ services:
       GITHUB_PERSONAL_ACCESS_TOKEN: ${GITHUB_TOKEN:-}
       GITHUB_TOOLSETS: default,actions
     command: ["http", "--port", "8989"]
+    networks:
+      - ai-team
+
+  # ==========================================================
+  # Odoo MCP bridge (streamable-http at :8000/mcp, internal only
+  # — NOT published to the host). Serves read access to an Odoo
+  # 16+ database for the accountant agent (monthly closing
+  # reports). Holds the Odoo credentials; agents reach Odoo
+  # through mcp__odoo__* tools and never see the credentials.
+  # Writes stay disabled by design (ODOO_MCP_ENABLE_WRITES is
+  # intentionally not set) — the accountant agent is read-only.
+  # ==========================================================
+
+  odoo-mcp:
+    build:
+      context: .
+      dockerfile: docker/odoo-mcp/Dockerfile
+      args:
+        ODOO_MCP_VERSION: ${ODOO_MCP_VERSION:-1.3.0}
+    image: ai-team/odoo-mcp:local
+    container_name: ai-team-odoo-mcp
+    restart: unless-stopped
+    profiles: ["integrations"]
+    environment:
+      # XML-RPC transport for Odoo 16-18 (default); set
+      # ODOO_TRANSPORT=json2 + ODOO_API_KEY for Odoo 19+.
+      ODOO_URL: ${ODOO_URL:-}
+      ODOO_DB: ${ODOO_DB:-}
+      ODOO_USERNAME: ${ODOO_USERNAME:-}
+      ODOO_PASSWORD: ${ODOO_PASSWORD:-}
+      ODOO_TRANSPORT: ${ODOO_TRANSPORT:-xmlrpc}
+      ODOO_API_KEY: ${ODOO_API_KEY:-}
+      ODOO_JSON2_DATABASE_HEADER: ${ODOO_JSON2_DATABASE_HEADER:-1}
+      # Optional: inject context.lang on every Odoo call, e.g. vi_VN
+      ODOO_LOCALE: ${ODOO_LOCALE:-}
+      # FastMCP's DNS-rebinding protection rejects Host headers outside
+      # this allowlist (default: localhost only). DSH's mcp-client sends
+      # Host: odoo-mcp:8000 — without this entry every MCP attach fails
+      # with HTTP 421 and the mcp__odoo__* tools silently never appear.
+      MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-odoo-mcp:8000,odoo-mcp,localhost,localhost:8000}
+    healthcheck:
+      # The MCP endpoint has no /health route; a TCP connect proves
+      # the server process is listening on its port.
+      test: ["CMD-SHELL", "python -c \"import socket; socket.create_connection(('127.0.0.1', 8000), 5).close()\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
     networks:
       - ai-team
 

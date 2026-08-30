@@ -1,0 +1,28 @@
+# ==========================================================
+# Shared Odoo MCP patch layer (mounted at
+# $DSH_HOME/cordis.patch.yml of dsh-accountant).
+#
+# Attaches the Odoo MCP server through the built-in
+# @deepseek-ai/dsh-mcp-client plugin. The odoo-mcp service holds
+# the Odoo credentials (ODOO_URL / ODOO_DB / ODOO_USERNAME /
+# ODOO_PASSWORD) — agents never see them and reads are read-only
+# by design (writes disabled on the bridge). Tools appear as
+# mcp__odoo__<tool>, e.g. mcp__odoo__search_records,
+# mcp__odoo__get_odoo_profile, mcp__odoo__aggregate_records.
+# ==========================================================
+
+- insert:
+    - id: mcp-odoo
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: odoo
+        transport: streamable-http
+        url: http://odoo-mcp:8000/mcp
+        # Accounting aggregation over a full month can be slow on
+        # large ledgers — raise the per-tool cap like playwright.
+        toolCallTimeoutMs: 120000
+        # Same fail-open policy as the other bridges: a down Odoo/
+        # MCP server must not block the agent from booting; the
+        # tools simply do not appear and the mcp-client
+        # auto-reconnects with backoff.
+        failOnStartupError: false

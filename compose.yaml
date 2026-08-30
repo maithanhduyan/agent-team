@@ -7,10 +7,9 @@
 #   docker compose --profile agents --profile integrations up -d  (full stack)
 #
 # Split into layers (Compose `include`):
-#   compose.agents.yaml      — 7 headless DSH agents (profile: agents)
+#   compose.agents.yaml      — 8 headless DSH agents (profile: agents)
 #   compose.integrations.yaml— redmine, redmine-mcp, playwright-mcp,
-#                              github-mcp (profile: integrations)
-# A future ERP layer (Odoo) will get its own file + `erp` profile.
+#                              github-mcp, odoo-mcp (profile: integrations)
 # ==========================================================
 
 name: ai-dev-team

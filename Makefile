@@ -22,7 +22,7 @@ infra: setup
 
 # Start only the headless DSH agent containers (requires infra)
 agents: setup
-	docker compose --profile agents up -d dsh-pm dsh-backend dsh-frontend dsh-tester dsh-reviewer
+	docker compose --profile agents up -d dsh-pm dsh-ba dsh-backend dsh-frontend dsh-tester dsh-reviewer dsh-cto dsh-accountant
 
 # Start only the integrations (Redmine + MCP bridges)
 integrations: setup
@@ -45,6 +45,21 @@ demo: setup
 #   make manual-test AGENT=dsh-backend
 manual-test:
 	docker compose exec $(AGENT) bash -c 'cd /workspace/project && dsh --profile headless "Inspect the repository and describe the backend architecture. Do not modify files."'
+
+# Trigger the accountant agent's monthly closing report (host side).
+# Usage: make monthly-close PROJECT=demo-project MONTH=2025-11
+# On Windows this runs PowerShell; on Linux/macOS use scripts/monthly-close.sh.
+.PHONY: monthly-close
+monthly-close: setup
+	@if command -v powershell >/dev/null 2>&1; then \
+		powershell -NoProfile -ExecutionPolicy Bypass -File scripts/monthly-close.ps1 \
+			-ProjectName "$(PROJECT)" -Month "$(MONTH)"; \
+	elif command -v pwsh >/dev/null 2>&1; then \
+		pwsh -NoProfile -File scripts/monthly-close.ps1 \
+			-ProjectName "$(PROJECT)" -Month "$(MONTH)"; \
+	else \
+		./scripts/monthly-close.sh --project "$(PROJECT)" --month "$(MONTH)"; \
+	fi
 
 # Show which DSH commit the agent image is pinned to
 pin:

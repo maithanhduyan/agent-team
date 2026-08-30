@@ -1,7 +1,7 @@
 # ==========================================================
 # ai-dev-team — headless DSH agents (profile: agents)
 #
-# All seven services run the SAME image (docker/dsh/Dockerfile)
+# All eight services run the SAME image (docker/dsh/Dockerfile)
 # built from a pinned DSH commit; each is differentiated only by
 # AGENT_ID / AGENT_ROLE / workspace mount / AGENTS.md overlay /
 # DSH home patch. Included from compose.yaml; enable with:
@@ -212,3 +212,29 @@ services:
       - ./agents/cto/AGENTS.md:/workspace/project/AGENTS.md:ro
       - ./agents/skills/git-branching/SKILL.md:/workspace/project/.dsh/skills/git-branching/SKILL.md:ro
       - ./agents/shared/cordis.patch.yml:/home/dsh/.dsh/cordis.patch.yml:ro
+
+  # ==========================================================
+  # Accountant Agent (month-end closing reports from Odoo)
+  # ==========================================================
+
+  dsh-accountant:
+    <<: *dsh-agent
+    profiles: ["agents"]
+    container_name: dsh-accountant
+    environment:
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:?Set DEEPSEEK_API_KEY in .env}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      DSH_PERMISSION_MODE: danger-full-access
+      AGENT_ID: accountant
+      AGENT_ROLE: chief-accountant
+      ORCHESTRATOR_URL: http://orchestrator:8000
+      AGENT_WORKSPACE: /workspace/project
+      DSH_BIN: dsh
+      DSH_PROFILE: headless
+    volumes:
+      - ./workspaces/accountant:/workspace/project
+      - ./agents/accountant/AGENTS.md:/workspace/project/AGENTS.md:ro
+      - ./agents/skills/git-branching/SKILL.md:/workspace/project/.dsh/skills/git-branching/SKILL.md:ro
+      - ./agents/skills/monthly-closing/SKILL.md:/workspace/project/.dsh/skills/monthly-closing/SKILL.md:ro
+      # Odoo MCP bridge (see agents/shared/odoo.patch.yml)
+      - ./agents/shared/odoo.patch.yml:/home/dsh/.dsh/cordis.patch.yml:ro

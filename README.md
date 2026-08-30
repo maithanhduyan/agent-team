@@ -1,8 +1,9 @@
 # ai-dev-team
 
 A multi-agent development team built on [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness),
-orchestrated with Docker Compose. Seven DSH agents — **pm**, **ba**,
-**backend**, **frontend**, **tester**, **reviewer**, **cto** — each run
+orchestrated with Docker Compose. Eight DSH agents — **pm**, **ba**,
+**backend**, **frontend**, **tester**, **reviewer**, **cto**,
+**accountant** — each run
 in their own container with their own isolated workspace, coordinated
 by a small orchestrator (PostgreSQL task DB + Redis dispatch queue +
 HTTP API). The **business owner** interacts through a chat command
@@ -19,7 +20,8 @@ center (DSH Web UI) and a task-board dashboard.
    dsh-pm  dsh-ba  dsh-backend        dsh-owner (web UI :3080)
    dsh-frontend dsh-tester        dashboard (task board :8080)
    dsh-reviewer dsh-cto
-   (7 x DSH,     orchestrator      postgres
+   dsh-accountant (Odoo MCP)
+   (8 x DSH,     orchestrator      postgres
     same image)  (API :8000)       redis
         │                │
         └────────────────┼─────────────────┘
@@ -39,7 +41,7 @@ files. The `dsh-owner` container is the exception: it serves the DSH
 
 ## Why this design
 
-- **One Dockerfile, five containers.** `docker/dsh/Dockerfile` builds the
+- **One Dockerfile, eight containers.** `docker/dsh/Dockerfile` builds the
   DSH image once; compose services differ only by `AGENT_ID`,
   `AGENT_ROLE`, and mounts.
 - **Pinned DSH.** DSH is a developer preview with frequent breaking
@@ -64,11 +66,13 @@ files. The `dsh-owner` container is the exception: it serves the DSH
 
 ```text
 ai-dev-team/
-├── docker-compose.yml        # 14 services: postgres, redis, orchestrator, dashboard, owner,
-│                             #   redmine-db, redmine, redmine-mcp, 7 agents
+├── docker-compose.yml        # 19 services: postgres, redis, orchestrator, dashboard, owner,
+│                             #   redmine-db, redmine, redmine-mcp, playwright-mcp,
+│                             #   github-mcp, odoo-mcp, 8 agents
 ├── .env.example              # copy to .env; never commit .env
 ├── Makefile                  # build/up/down/demo helpers
 ├── docker/dsh/Dockerfile     # shared DSH agent image (pinned commit)
+├── docker/odoo-mcp/Dockerfile# Odoo MCP bridge image (pinned odoo-mcp)
 ├── agent-runner/             # zero-dep Node runner baked into the image
 │   ├── runner.js             # register -> heartbeat -> long-poll -> dsh headless
 │   └── web-proxy.cjs         # loopback -> eth0 proxy for the owner web UI
@@ -80,24 +84,36 @@ ai-dev-team/
 │   ├── tester/AGENTS.md
 │   ├── reviewer/AGENTS.md
 │   ├── cto/AGENTS.md
+│   ├── accountant/AGENTS.md  # monthly closing reports from Odoo
 │   ├── owner/AGENTS.md       # business-owner assistant (web UI)
 │   ├── shared/
-│   │   └── cordis.patch.yml  # DSH home-level patch layer: attaches the Redmine MCP
-│   │                         #   server via @deepseek-ai/dsh-mcp-client; mounted at
-│   │                         #   /home/dsh/.dsh/cordis.patch.yml of pm/ba/tester/cto/owner
+│   │   ├── cordis.patch.yml  # DSH home-level patch layer: attaches the Redmine MCP
+│   │   │                     #   server via @deepseek-ai/dsh-mcp-client; mounted at
+│   │   │                     #   /home/dsh/.dsh/cordis.patch.yml of pm/ba/tester/cto/owner
+│   │   ├── github.patch.yml  # GitHub MCP attach for backend/frontend/reviewer
+│   │   └── odoo.patch.yml    # Odoo MCP attach for the accountant agent
 │   └── skills/
-│       └── git-branching/SKILL.md  # GIT BRANCHING SKILL (Git Flow model,
-│                                   #   git-flow commands + manual
-│                                   #   equivalents), mounted read-only into
-│                                   #   /workspace/project/.dsh/skills/...
-│                                   #   of every agent container (DSH
-│                                   #   auto-discovers project skills there;
-│                                   #   AGENTS.md points each agent at it)
+│       ├── git-branching/SKILL.md  # GIT BRANCHING SKILL (Git Flow model,
+│       │                           #   git-flow commands + manual
+│       │                           #   equivalents), mounted read-only into
+│       │                           #   /workspace/project/.dsh/skills/...
+│       │                           #   of every agent container (DSH
+│       │                           #   auto-discovers project skills there;
+│       │                           #   AGENTS.md points each agent at it)
+│       ├── github-workflow/SKILL.md # PR/issues workflow for dev agents
+│       ├── ui-testing/SKILL.md      # Playwright UI test workflow (tester)
+│       └── monthly-closing/SKILL.md # MONTHLY CLOSING SKILL: Odoo data
+│                                    #   pulls, VAS report mapping, checklist
+│                                    #   (accountant)
 ├── dashboard/                # task board (nginx + static single-file UI)
 │   ├── nginx.conf            # proxies /api to the orchestrator
 │   └── html/index.html       # board: projects/tasks/agents/events
+├── scripts/                  # host-side triggers (monthly closing, ...)
+│   ├── monthly-close.ps1     #   create + dispatch the accountant task
+│   └── monthly-close.sh      #   (PowerShell / bash for cron scheduling)
 ├── workspaces/               # one isolated project copy per agent
-│   ├── pm/  ba/  backend/  frontend/  tester/  reviewer/  cto/  owner/
+│   ├── pm/  ba/  backend/  frontend/  tester/  reviewer/  cto/
+│   ├── accountant/  owner/
 ├── orchestrator/             # TypeScript API: task DB + dispatch + registry
 │   ├── Dockerfile
 │   ├── src/                  # server, db, redis, agents, tasks, events, git
@@ -111,14 +127,14 @@ ai-dev-team/
 - Docker with the compose v2 plugin
 - A DeepSeek API key (`DEEPSEEK_API_KEY`)
 - ~4 GB free disk for the DSH image build (clone + `pnpm install` +
-  full build; the image is shared by all five agents)
+  full build; the image is shared by all eight agents)
 
 ## Quick start
 
 ```bash
 cp .env.example .env          # set DEEPSEEK_API_KEY
 make build                    # docker compose build (long on first run)
-make up                       # infra + orchestrator + all 5 agents
+make up                       # infra + orchestrator + all 8 agents
 docker compose ps
 make demo                     # seed a demo project + task graph, dispatch T1
 docker compose logs -f dsh-backend dsh-tester
@@ -168,7 +184,9 @@ The owner (the human CEO) has two entry points — no curl needed:
 Role flow: owner → **ba** (business analyst: user stories + acceptance
 criteria) → **pm** (breaks down + dispatches) → **backend/frontend**
 (implement) → **tester** (verify) → **reviewer** (PR review) + **cto**
-(architecture review, release gate).
+(architecture review, release gate). Separately, **accountant**
+produces the monthly closing report pack from Odoo on schedule (see
+[Monthly closing from Odoo](#monthly-closing-from-odoo-accountant-agent)).
 
 ## Redmine integration
 
@@ -313,6 +331,7 @@ from booting.
 | Redmine | `redmine-mcp` (streamable-http :8000) | pm, ba, tester, cto, owner | `mcp__redmine__*` — issues, trackers, statuses |
 | Playwright | `playwright-mcp` (streamable-http :8931) | tester | `mcp__playwright__browser_*` — navigate, snapshot, click, type, verify, screenshot (headless Chromium) |
 | GitHub | `github-mcp` (streamable-http :8989, official server, digest-pinned) | backend, frontend, reviewer | `mcp__github__*` — PRs, issues, repos, Actions (Bearer auth via the patch's `!!js` env read; token never written to disk in the patch) |
+| Odoo | `odoo-mcp` (streamable-http :8000, `docker/odoo-mcp/Dockerfile`, pinned `odoo-mcp` PyPI version) | accountant | `mcp__odoo__*` — search/read/aggregate records, AR/AP aging, accounting health, profile (read-only; bridge holds `ODOO_*` credentials) |
 
 Playwright details:
 
@@ -336,6 +355,46 @@ GitHub details:
   `process.env.GITHUB_TOKEN` at boot — the patch file itself never
   contains the token).
 - Workflow: see `agents/skills/github-workflow/SKILL.md`.
+
+Odoo details:
+
+- `odoo-mcp` (package [`odoo-mcp`](https://pypi.org/project/odoo-mcp/),
+  MIT, built from `docker/odoo-mcp/Dockerfile` at a pinned version)
+  holds `ODOO_URL` / `ODOO_DB` / `ODOO_USERNAME` / `ODOO_PASSWORD`;
+  the accountant agent reaches Odoo through read-only
+  `mcp__odoo__*` tools and never sees the credentials.
+- Transport: XML-RPC for Odoo 16-18 (default), External JSON-2 for
+  Odoo 19+ (`ODOO_TRANSPORT=json2` + `ODOO_API_KEY`).
+- Writes are disabled on the bridge by design
+  (`ODOO_MCP_ENABLE_WRITES` never set) — the accountant is read-only.
+- Workflow: see `agents/skills/monthly-closing/SKILL.md`.
+
+## Monthly closing from Odoo (accountant agent)
+
+The `dsh-accountant` agent produces the **monthly closing report
+pack** from Odoo on a schedule: P&L (Báo cáo kết quả kinh doanh),
+balance sheet summary (Bảng cân đối kế toán), VAT summary (Tờ khai
+GTGT), trial balance CSV, AR/AP aging, and a validated closing
+checklist — delivered **in the accountant's workspace only** (draft
+material for the human accountant; the official declarations are
+still filed by humans). The pack contains confidential business data
+and is **never committed or pushed to git** — see
+[`SECURITY.md`](SECURITY.md) and [`CONDUCT.md`](CONDUCT.md) for the
+agent security policy and professional conduct rules.
+
+- The closing procedure (data pulls, VAS report mapping, checklist,
+  templates) is documented in **MONTHLY CLOSING SKILL**
+  (`agents/skills/monthly-closing/SKILL.md`), mounted read-only into
+  the accountant's workspace.
+- **Triggering:** the orchestrator has no scheduler, so a host-side
+  trigger creates + dispatches the task:
+  `scripts/monthly-close.ps1` / `scripts/monthly-close.sh`
+  (idempotent: skips periods already queued). Wire it to Windows
+  Task Scheduler or cron on the 1st of each month; the runner polls
+  continuously, so the task is picked up immediately.
+- **Setup:** fill the `ODOO_*` block in `.env`, start the stack, and
+  verify the bridge — full guide in
+  [`docs/ODOO-MONTHLY-CLOSING.md`](docs/ODOO-MONTHLY-CLOSING.md).
 
 ## Project management loop (Redmine ↔ Orchestrator)
 
@@ -363,8 +422,8 @@ profiles) so the stack can be started partially:
 | File | Contents | Profile |
 |---|---|---|
 | `compose.yaml` | postgres, redis, orchestrator, dashboard, dsh-owner | (always on) |
-| `compose.agents.yaml` | 7 headless agents (pm/ba/backend/frontend/tester/reviewer/cto) | `--profile agents` |
-| `compose.integrations.yaml` | redmine, redmine-mcp, playwright-mcp, github-mcp | `--profile integrations` |
+| `compose.agents.yaml` | 8 headless agents (pm/ba/backend/frontend/tester/reviewer/cto/accountant) | `--profile agents` |
+| `compose.integrations.yaml` | redmine, redmine-mcp, playwright-mcp, github-mcp, odoo-mcp | `--profile integrations` |
 
 Full stack: `docker compose --profile agents --profile integrations up -d`
 (or `make up`). Core only: `docker compose up -d`.
@@ -405,6 +464,18 @@ Migrations run automatically on orchestrator boot (idempotent).
   **credential broker** — agents request scoped permissions from the
   orchestrator instead of holding a repository-wide token (see
   `orchestrator/src/git.ts` as the extension point).
+- **Odoo credentials.** `ODOO_PASSWORD` / `ODOO_API_KEY` live only in
+  `.env` and inside the `odoo-mcp` container — never in the DB, run
+  logs, or agent workspaces. The bridge is internal-only (not
+  published to the host) and read-only (`ODOO_MCP_ENABLE_WRITES` is
+  never set). Prefer a dedicated low-privilege Odoo user (Accounting
+  app read access) over the admin account.
+- **Business data.** Closing report packs contain confidential
+  financial data and are workspace-local by policy: agents never
+  commit or push them (enforced in AGENTS.md, the MONTHLY CLOSING
+  SKILL, and the orchestrator prompt for the accountant agent). See
+  `SECURITY.md` (data policy + incident log) and `CONDUCT.md`
+  (professional ethics) — every agent must follow them.
 - Postgres/Redis are **not exposed** to the host. Only the orchestrator
   API is published (`localhost:8000`).
 
@@ -423,6 +494,17 @@ Migrations run automatically on orchestrator boot (idempotent).
   that `redmine-mcp` is healthy (`docker compose ps redmine-mcp`,
   `docker compose logs redmine-mcp`), and that `REDMINE_API_KEY` is set
   in `.env` (restart `redmine-mcp` after changing it).
+- Agents never show `mcp__odoo__*` tools: same recipe — check
+  `agents/shared/odoo.patch.yml` is mounted on `dsh-accountant`,
+  `docker compose ps odoo-mcp` (healthy), `docker compose logs
+  odoo-mcp`, and the `ODOO_*` vars in `.env` (restart `odoo-mcp`
+  after changing them). If the bridge logs show **HTTP 421**, the
+  FastMCP host allowlist rejected the client's `Host` header — keep
+  `MCP_ALLOWED_HOSTS` (compose.integrations.yaml) in sync. Odoo in a
+  separate compose project needs `docker network connect
+  <net> ai-team-odoo-mcp` + `ODOO_URL=http://odoo:8069` (see
+  `scripts/odoo-network.ps1` and
+  [`docs/ODOO-MONTHLY-CLOSING.md`](docs/ODOO-MONTHLY-CLOSING.md)).
 - Build fails on `pnpm install`: the DSH image build needs network access
   to npm/GitHub; retry with `docker compose build --no-cache` if a
   transient failure left partial layers.

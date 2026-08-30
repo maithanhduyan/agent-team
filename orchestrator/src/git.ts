@@ -23,8 +23,15 @@ export function branchName(agentId: string, task: Task): string {
  * Build the full prompt handed to `dsh --profile headless`.
  * The agent's own AGENTS.md is mounted at the workspace root and
  * carries the role rules; this prompt carries the task itself.
+ *
+ * Agents whose deliverables are confidential (accountant) get
+ * no-push/no-PR instructions: report packs contain business data
+ * and must never reach a repository (see SECURITY.md).
  */
+const CONFIDENTIAL_AGENTS = new Set(['accountant']);
+
 export function buildTaskPrompt(task: Task, project: Project | null, agentId: string): string {
+    const confidential = CONFIDENTIAL_AGENTS.has(agentId);
     const lines = [
         `# ${taskKey(task.id)}: ${task.title}`,
         '',
@@ -40,12 +47,19 @@ export function buildTaskPrompt(task: Task, project: Project | null, agentId: st
         '## Instructions',
         `- You are the "${agentId}" agent. Read AGENTS.md at the workspace root and follow its rules.`,
         '- Read the project documentation (README.md, ARCHITECTURE.md, REQUIREMENTS.md, DECISIONS.md) before starting.',
-        `- Work on branch \`${branchName(agentId, task)}\`; never commit to the default branch.`,
-        '- Commit your work in logical steps and push the branch when a remote is configured.',
-        project?.repository_url
-            ? '- Open a Pull Request for the branch and report its URL in your final summary.'
-            : '- No remote is configured; commit locally and report what you changed.',
-        '- The task is complete only when the acceptance criteria in the description are met and tests pass.',
+        ...(confidential
+            ? [
+                '- CONFIDENTIAL DELIVERABLES: your outputs may contain business data. Do NOT commit, push, or open a Pull Request with report packs or business figures. Deliverables stay in the workspace; report the summary via the run result.',
+                '- The task is complete only when the acceptance criteria in the description are met and no business data was committed or pushed.',
+              ]
+            : [
+                `- Work on branch \`${branchName(agentId, task)}\`; never commit to the default branch.`,
+                '- Commit your work in logical steps and push the branch when a remote is configured.',
+                project?.repository_url
+                    ? '- Open a Pull Request for the branch and report its URL in your final summary.'
+                    : '- No remote is configured; commit locally and report what you changed.',
+                '- The task is complete only when the acceptance criteria in the description are met and tests pass.',
+              ]),
     ];
     return lines.join('\n');
 }
