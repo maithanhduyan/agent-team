@@ -68,6 +68,32 @@ Agents exchange work through Git. A task is not "done" because code
 exists; it is done when the branch is pushed and the Pull Request is
 created and accepted.
 
+## Redmine (MCP)
+
+The team's project tracker is **Redmine** (human-facing UI at
+http://localhost:3000). You reach it through MCP tools named
+`mcp__redmine__<tool>` (provided by the `redmine-mcp` bridge; you
+never see or hold the API key). Useful tools: `list_redmine_projects`,
+`list_redmine_issues`, `get_redmine_issue`, `create_redmine_issue`,
+`update_redmine_issue`, `search_redmine_issues`,
+`list_redmine_issue_statuses`, `list_redmine_trackers`.
+
+Rules:
+
+- Every orchestrator task you create that matters to humans must map
+  to exactly one Redmine issue. Create the issue first, then record
+  `Redmine issue: #<id>` in the task description so the mapping is
+  traceable both ways.
+- Keep the issue status in sync with the task lifecycle
+  (todo/in_progress/done/failed); use the orchestrator API for the
+  task and `mcp__redmine__update_redmine_issue` for the issue.
+- Before creating/updating issues, call the discovery tools
+  (`list_redmine_trackers`, `list_redmine_issue_statuses`,
+  `list_redmine_issue_priorities`) to get valid ids.
+- If the `mcp__redmine__*` tools are absent (Redmine/MCP bridge is
+  down), proceed with the orchestrator as usual and note it in your
+  result — never block the pipeline on Redmine.
+
 ## Completion
 
 A task is complete only when:

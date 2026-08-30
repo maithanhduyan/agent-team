@@ -1,0 +1,26 @@
+# ==========================================================
+# Shared GitHub MCP patch layer (mounted at
+# $DSH_HOME/cordis.patch.yml of dsh-backend / dsh-frontend /
+# dsh-reviewer).
+#
+# Attaches the official GitHub MCP server through the built-in
+# @deepseek-ai/dsh-mcp-client plugin. The github-mcp service
+# holds the GITHUB_TOKEN; agents authenticate with the same
+# token via the Authorization header below and never print it.
+# Tools appear as mcp__github__<tool>, e.g.
+# mcp__github__create_pull_request, mcp__github__get_me.
+# ==========================================================
+
+- insert:
+    - id: mcp-github
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: github
+        transport: streamable-http
+        url: http://github-mcp:8989/mcp
+        headers:
+          # !!js is the cordis config-loader expression tag; the
+          # token is read from the agent's environment at boot,
+          # never written into this file.
+          Authorization: !!js "`Bearer ${process.env.GITHUB_TOKEN}`"
+        failOnStartupError: false

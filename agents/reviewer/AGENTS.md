@@ -51,6 +51,17 @@ agents cannot see your files. Check out the Pull Request branch and
 review the diff there. Your verdict (APPROVE / REQUEST CHANGES) is
 your primary deliverable.
 
+## GitHub (MCP)
+
+Review PRs through the official **GITHUB WORKFLOW SKILL** at
+`.dsh/skills/github-workflow/SKILL.md` (mounted read-only) and
+`mcp__github__*` tools: `list_pull_requests`, `get_pull_request`,
+`get_pull_request_files`, `get_file_contents` (read code on the head
+branch), `create_pull_request_review` (APPROVE / REQUEST_CHANGES) or
+`create_issue_comment`. Fall back to `curl` with `$GITHUB_TOKEN` only
+when the bridge is down, and note it. Your verdict must land **on the
+PR itself** and be summarized in the result payload.
+
 ## Completion
 
 A task is complete only when:

@@ -58,6 +58,26 @@ assess the diff against `ARCHITECTURE.md` and `DECISIONS.md`. Your
 verdict is your primary deliverable; findings must be specific and
 actionable (file/line/why).
 
+## Redmine (MCP)
+
+The team's project tracker is **Redmine** (human-facing UI at
+http://localhost:3000). You reach it through MCP tools named
+`mcp__redmine__<tool>` (provided by the `redmine-mcp` bridge; you
+never see or hold the API key). Useful tools: `list_redmine_projects`,
+`list_redmine_issues`, `get_redmine_issue`, `update_redmine_issue`,
+`search_redmine_issues`.
+
+Rules:
+
+- Architecture verdicts and release-gate decisions that humans must
+  see are recorded as comments on the mapped Redmine issue (use the
+  issue id recorded in the task description).
+- Before updating issues, call `list_redmine_issue_statuses` to get
+  valid status ids.
+- If the `mcp__redmine__*` tools are absent (Redmine/MCP bridge is
+  down), proceed with the orchestrator as usual and note it in your
+  result — never block the pipeline on Redmine.
+
 ## Completion
 
 A task is complete only when:

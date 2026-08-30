@@ -54,12 +54,18 @@ files. The `dsh-owner` container is the exception: it serves the DSH
   between agents.
 - **Git as the exchange medium.** backend pushes `backend/TASK-007-*`,
   tester checks out that branch, reviewer reviews the PR.
+- **Redmine as the human layer.** A Redmine instance (issues, wiki,
+  Gantt, time tracking) gives humans a classic project-management UI at
+  `http://localhost:3000`; the pm/ba/tester/cto agents reach it through
+  an MCP bridge (`redmine-mcp`) and `mcp__redmine__*` tools. The
+  orchestrator task DB stays the system of record for agent work.
 
 ## Directory layout
 
 ```text
 ai-dev-team/
-├── docker-compose.yml        # 11 services: postgres, redis, orchestrator, dashboard, owner, 7 agents
+├── docker-compose.yml        # 14 services: postgres, redis, orchestrator, dashboard, owner,
+│                             #   redmine-db, redmine, redmine-mcp, 7 agents
 ├── .env.example              # copy to .env; never commit .env
 ├── Makefile                  # build/up/down/demo helpers
 ├── docker/dsh/Dockerfile     # shared DSH agent image (pinned commit)
@@ -75,6 +81,10 @@ ai-dev-team/
 │   ├── reviewer/AGENTS.md
 │   ├── cto/AGENTS.md
 │   ├── owner/AGENTS.md       # business-owner assistant (web UI)
+│   ├── shared/
+│   │   └── cordis.patch.yml  # DSH home-level patch layer: attaches the Redmine MCP
+│   │                         #   server via @deepseek-ai/dsh-mcp-client; mounted at
+│   │                         #   /home/dsh/.dsh/cordis.patch.yml of pm/ba/tester/cto/owner
 │   └── skills/
 │       └── git-branching/SKILL.md  # GIT BRANCHING SKILL (Git Flow model,
 │                                   #   git-flow commands + manual
@@ -160,6 +170,64 @@ criteria) → **pm** (breaks down + dispatches) → **backend/frontend**
 (implement) → **tester** (verify) → **reviewer** (PR review) + **cto**
 (architecture review, release gate).
 
+## Redmine integration
+
+**Why:** the orchestrator task DB remains the system of record for
+agent work; Redmine is the human-facing project-management layer
+(issues, wiki, Gantt, time tracking) at `http://localhost:3000`.
+
+**How agents connect (MCP):** DSH ships an MCP client plugin
+(`@deepseek-ai/dsh-mcp-client`, no extra install). The shared patch
+layer `agents/shared/cordis.patch.yml` is mounted read-only at
+`/home/dsh/.dsh/cordis.patch.yml` of `dsh-pm`, `dsh-ba`, `dsh-tester`,
+`dsh-cto`, and `dsh-owner`; DSH applies it to every profile (headless
+runner + owner web UI). It attaches one MCP server:
+
+```yaml
+- insert:
+    - id: mcp-redmine
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: redmine
+        transport: streamable-http
+        url: http://redmine-mcp:8000/mcp
+```
+
+Tools appear in agent sessions as `mcp__redmine__<tool>` (e.g.
+`mcp__redmine__create_redmine_issue`, `mcp__redmine__list_redmine_issues`,
+`mcp__redmine__manage_redmine_wiki_page`, `mcp__redmine__get_gantt_chart`).
+The bridge `redmine-mcp` ([redmine-mcp-server](https://github.com/jztan/redmine-mcp-server),
+MIT, pinned tag) holds the Redmine API key — **agents never see
+credentials**. A down Redmine/MCP never blocks agents: the mcp-client
+defaults to `failOnStartupError: false` with auto-reconnect, so tools
+simply disappear until the bridge recovers.
+
+**One-time setup (manual, ~2 minutes):**
+
+1. `cp .env.example .env` and set `REDMINE_DB_PASSWORD`,
+   `REDMINE_SECRET_KEY` (`openssl rand -hex 32`).
+2. `docker compose up -d redmine` — first boot runs DB migrations.
+3. Open `http://localhost:3000`, sign in as `admin` / `admin`, change
+   the password.
+4. Administration → Settings → API → enable **Enable REST API**.
+5. My account → API access key → create one, put it in `REDMINE_API_KEY`
+   in `.env` (or from the container:
+   `docker compose exec redmine bundle exec rails runner "puts User.find_by(login: 'admin').api_key"`).
+6. `docker compose up -d redmine-mcp` — verify the bridge is healthy:
+   `docker compose ps` and `docker compose logs redmine-mcp`.
+
+**Mapping convention:** each orchestrator task that matters to humans
+maps to exactly one Redmine issue; the pm/ba/tester agents record
+`Redmine issue: #<id>` in the task description so the mapping is
+traceable both ways (rules live in each agent's `AGENTS.md`).
+
+**REST API fallback:** `curl` is already installed in the agent image;
+Redmine's built-in REST API ([docs](https://www.redmine.org/projects/redmine/wiki/Rest_api))
+is reachable from any container with `REDMINE_URL`/`REDMINE_API_KEY`
+set, using the `X-Redmine-API-Key` header. The MCP bridge is the
+recommended path; the API is the lightweight fallback for ad-hoc
+queries.
+
 ## How a task flows
 
 ```text
@@ -208,6 +276,67 @@ events (postgres + redis pub/sub events:all)
 | GET | `/api/events?limit=` | recent events |
 | GET | `/healthz` | liveness (DB check; compose healthcheck) |
 
+## Pushing to GitHub (git integration)
+
+Agents push branches and open PRs only when the project has a
+`repository_url` — the orchestrator embeds it in the task prompt, and
+the runner configures the workspace's `origin` remote automatically
+(no manual `git remote add` needed).
+
+To enable it:
+
+1. Fill `GITHUB_TOKEN` in `.env` (fine-grained PAT with `Contents:
+   Read and write` on the target repo — see
+   `agents/skills/git-branching/SKILL.md` for the PR API call).
+2. Fill `SEED_REPOSITORY_URL=https://github.com/<owner>/<repo>.git`
+   in `.env` (clean URL — **no token inside**; the runner injects
+   `https://x-access-token:<token>@...` into the workspace's git
+   config at run time, so the token never lands in the DB or logs).
+3. `docker compose up -d` then `make demo` (or re-run `make demo`
+   later — the seed updates `repository_url` on an existing project).
+4. Watch pushes/PRs in `docker compose logs -f dsh-backend`.
+
+For a project created via `POST /api/projects`, pass `repository_url`
+in the body instead; agents still get the remote + credential
+injection through the same runner path.
+
+## MCP integrations
+
+Every DSH agent can attach MCP servers through a DSH home-level patch
+mounted at `$DSH_HOME/cordis.patch.yml`; tools appear as
+`mcp__<serverName>__<tool>`. All bridges fail open
+(`failOnStartupError: false`) so a down server never blocks an agent
+from booting.
+
+| Bridge | Server | Consumers | Tools |
+|---|---|---|---|
+| Redmine | `redmine-mcp` (streamable-http :8000) | pm, ba, tester, cto, owner | `mcp__redmine__*` — issues, trackers, statuses |
+| Playwright | `playwright-mcp` (streamable-http :8931) | tester | `mcp__playwright__browser_*` — navigate, snapshot, click, type, verify, screenshot (headless Chromium) |
+| GitHub | `github-mcp` (streamable-http :8989, official server, digest-pinned) | backend, frontend, reviewer | `mcp__github__*` — PRs, issues, repos, Actions (Bearer auth via the patch's `!!js` env read; token never written to disk in the patch) |
+
+Playwright details:
+
+- Image `ai-team/playwright-mcp:local` builds from
+  `docker/playwright-mcp/Dockerfile` (@playwright/mcp pinned, Chromium
+  + system deps, headless, `--isolated`, `--caps testing`).
+- Screenshots are written to `workspaces/tester/artifacts/`, which is
+  mounted into the tester's workspace at `artifacts/` — the tester
+  commits them as PR evidence. Workflow: see
+  `agents/skills/ui-testing/SKILL.md`.
+- The app under test runs inside the tester's workspace (the tester
+  checks out the frontend branch, starts a dev server detached with
+  `setsid`, and verifies it with `curl` before driving the browser).
+
+GitHub details:
+
+- `github-mcp` holds `GITHUB_TOKEN` as
+  `GITHUB_PERSONAL_ACCESS_TOKEN`; agents authenticate with the same
+  token through the `Authorization` header injected by
+  `agents/shared/github.patch.yml` (`!!js` expression reading
+  `process.env.GITHUB_TOKEN` at boot — the patch file itself never
+  contains the token).
+- Workflow: see `agents/skills/github-workflow/SKILL.md`.
+
 ## Data model
 
 `agents`, `projects`, `tasks`, `task_dependencies`, `agent_runs`,
@@ -223,16 +352,27 @@ Migrations run automatically on orchestrator boot (idempotent).
   writing the workspace. Acceptable for this prototype because each
   agent is isolated by its own container and workspace; revisit
   before any multi-tenant deployment.
+- **Unconfined agent shell.** The agent image ships no sandbox backend
+  (bubblewrap/Landlock), and DSH fails closed for confined modes — so
+  the compose services set `DSH_PERMISSION_MODE=danger-full-access`,
+  letting agents run `bash` (git, curl) unconfined with approval
+  policy `never`. That is acceptable only because every agent is
+  already isolated by its own container and workspace; never expose
+  these containers to untrusted workloads.
 - **Pin `DSH_REF`.** The Dockerfile defaults to the commit this scaffold
   was written against; for production set it explicitly
   (`DSH_REF=<commit-sha>` in `.env` or `--build-arg`) so every agent runs
   the same DSH.
 - **Prototype credentials.** All agents currently share the same
   `GITHUB_TOKEN` (GitHub requires credentials to push branches/PRs).
-  Before anything serious: move to a **credential broker** — agents
-  request scoped permissions from the orchestrator instead of holding a
-  repository-wide token (see `orchestrator/src/git.ts` as the extension
-  point).
+  The runner injects it into each workspace's `.git/config` (as
+  `https://x-access-token:<token>@...`) — the token is never stored in
+  the DB or run logs, but it **is** written to the bind-mounted
+  workspace on the host. Keep workspaces out of any shared backup or
+  repo until this is replaced. Before anything serious: move to a
+  **credential broker** — agents request scoped permissions from the
+  orchestrator instead of holding a repository-wide token (see
+  `orchestrator/src/git.ts` as the extension point).
 - Postgres/Redis are **not exposed** to the host. Only the orchestrator
   API is published (`localhost:8000`).
 
@@ -245,6 +385,12 @@ Migrations run automatically on orchestrator boot (idempotent).
   the runner logs registration, heartbeats, and polls.
 - `make demo` re-run: the seed is idempotent (project and tasks are
   re-created; already-dispatched tasks are left alone).
+- Agents never show `mcp__redmine__*` tools: check that
+  `agents/shared/cordis.patch.yml` is mounted
+  (`docker compose exec dsh-pm ls -la /home/dsh/.dsh/cordis.patch.yml`),
+  that `redmine-mcp` is healthy (`docker compose ps redmine-mcp`,
+  `docker compose logs redmine-mcp`), and that `REDMINE_API_KEY` is set
+  in `.env` (restart `redmine-mcp` after changing it).
 - Build fails on `pnpm install`: the DSH image build needs network access
   to npm/GitHub; retry with `docker compose build --no-cache` if a
   transient failure left partial layers.
@@ -258,8 +404,12 @@ Migrations run automatically on orchestrator boot (idempotent).
 
 1. **Credential broker** — scoped git permissions per agent instead of a
    shared token.
-2. **Task tracker adapter** — the orchestrator's task DB is the system of
-   record; Redmine/Jira/GitHub Issues can be added as adapters without
+2. **Task tracker adapter** — Redmine is wired in as the human layer
+   (container + MCP bridge). The remaining piece is an orchestrator
+   adapter that mirrors tasks ↔ Redmine issues automatically (outbound
+   on create/status change, inbound poll for human edits), so the
+   mapping convention in `AGENTS.md` becomes enforced rather than
+   manual. Jira/GitHub Issues can follow the same adapter shape without
    touching the DSH agents.
 3. **Railway deployment** — the compose services map 1:1 to Railway
    services; keep workspace isolation and pinned DSH.

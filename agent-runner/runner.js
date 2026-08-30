@@ -72,6 +72,25 @@ function run(cmd, args, { cwd, timeoutMs = 0 } = {}) {
   })
 }
 
+/**
+ * Remote URL with credentials for HTTPS pushes.
+ *
+ * The DB stores a clean URL (https://github.com/<owner>/<repo>.git);
+ * git does not read GITHUB_TOKEN from the environment by itself, so we
+ * inject it here as `https://x-access-token:<token>@...` (any username
+ * works with a PAT as the password). The token lands only in the
+ * workspace's .git/config, never in the DB, prompts, or run logs.
+ * URLs that already carry credentials are returned unchanged.
+ */
+function originUrlWithCredentials(repositoryUrl) {
+  if (!repositoryUrl) return null
+  if (!/^https:\/\//.test(repositoryUrl)) return repositoryUrl
+  if (/^https:\/\/[^/@\s]+@/.test(repositoryUrl)) return repositoryUrl
+  const token = env.GITHUB_TOKEN
+  if (!token) return repositoryUrl
+  return repositoryUrl.replace(/^https:\/\//, `https://x-access-token:${encodeURIComponent(token)}@`)
+}
+
 /** Bootstrap the workspace as a git repo (idempotent). */
 async function ensureRepo(repositoryUrl, defaultBranch) {
   mkdirSync(WORKSPACE, { recursive: true })
@@ -80,11 +99,12 @@ async function ensureRepo(repositoryUrl, defaultBranch) {
     await run('git', ['init', '-q', '-b', defaultBranch || 'main'], { cwd: WORKSPACE })
   }
   if (repositoryUrl) {
+    const origin = originUrlWithCredentials(repositoryUrl)
     const remotes = await run('git', ['remote'], { cwd: WORKSPACE })
     if (!remotes.stdout.includes('origin')) {
-      await run('git', ['remote', 'add', 'origin', repositoryUrl], { cwd: WORKSPACE })
+      await run('git', ['remote', 'add', 'origin', origin], { cwd: WORKSPACE })
     } else {
-      await run('git', ['remote', 'set-url', 'origin', repositoryUrl], { cwd: WORKSPACE })
+      await run('git', ['remote', 'set-url', 'origin', origin], { cwd: WORKSPACE })
     }
   }
   // The dsh user needs a git identity to commit on behalf of this agent.

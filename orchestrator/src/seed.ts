@@ -26,6 +26,7 @@ async function main() {
 
     const projectName = process.env.SEED_PROJECT ?? 'demo-project';
     const repoUrl = process.env.SEED_REPOSITORY_URL ?? null;
+    const defaultBranch = process.env.SEED_DEFAULT_BRANCH ?? 'main';
 
     const existing = await db.query('select id from projects where name = $1', [
         projectName,
@@ -33,11 +34,23 @@ async function main() {
     let projectId: number;
     if (existing.rows.length > 0) {
         projectId = existing.rows[0].id;
+        // Re-running the seed with a SEED_REPOSITORY_URL must not be a
+        // silent no-op: update the URL so a previously URL-less project
+        // picks up the remote (agents push branches/PRs only when a
+        // repository_url is configured).
+        if (repoUrl) {
+            await db.query('update projects set repository_url = $2, default_branch = $3, updated_at = now() where id = $1', [
+                projectId,
+                repoUrl,
+                defaultBranch,
+            ]);
+            console.log(`[seed] updated repository_url for project "${projectName}" (id=${projectId})`);
+        }
         console.log(`[seed] project "${projectName}" already exists (id=${projectId})`);
     }
     else {
         const { rows } = await db.query(`insert into projects (name, repository_url, default_branch)
-       values ($1, $2, 'main') returning id`, [projectName, repoUrl]);
+       values ($1, $2, $3) returning id`, [projectName, repoUrl, defaultBranch]);
         projectId = rows[0].id;
         console.log(`[seed] created project "${projectName}" (id=${projectId})`);
     }

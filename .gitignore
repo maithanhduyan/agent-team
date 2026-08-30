@@ -23,3 +23,6 @@ data/*/*
 # Editor / OS
 .DS_Store
 *.log
+
+# Reference directories
+.references/
