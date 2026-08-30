@@ -66,9 +66,11 @@ files. The `dsh-owner` container is the exception: it serves the DSH
 
 ```text
 ai-dev-team/
-├── docker-compose.yml        # 19 services: postgres, redis, orchestrator, dashboard, owner,
-│                             #   redmine-db, redmine, redmine-mcp, playwright-mcp,
-│                             #   github-mcp, odoo-mcp, 8 agents
+├── compose.yaml              # core stack: postgres, redis, orchestrator, dashboard, dsh-owner
+├── compose.agents.yaml       #   8 headless agents (profile: agents)
+├── compose.integrations.yaml #   redmine + MCP bridges (profile: integrations)
+├── ARCHITECTURE.md           # system design, tech stack, contracts (cto)
+├── DECISIONS.md              # architecture decisions / ADRs (cto)
 ├── .env.example              # copy to .env; never commit .env
 ├── Makefile                  # build/up/down/demo helpers
 ├── docker/dsh/Dockerfile     # shared DSH agent image (pinned commit)
@@ -116,10 +118,11 @@ ai-dev-team/
 │   ├── accountant/  owner/
 ├── orchestrator/             # TypeScript API: task DB + dispatch + registry
 │   ├── Dockerfile
-│   ├── src/                  # server, db, redis, agents, tasks, events, git
+│   ├── src/                  # server, db, redis, agents, tasks, events,
+│   │                         #   git, redmine (two-way sync), migrate, seed
 │   └── migrations/           # SQL, applied automatically on boot
-└── data/                     # reserved for bind-mount deployments
-    ├── postgres/  redis/     #   (compose uses named volumes by default)
+└── data/                     # local database data (bind mounts for
+    ├── postgres/  redis/     #   postgres and redis)
 ```
 
 ## Prerequisites
@@ -430,8 +433,10 @@ Full stack: `docker compose --profile agents --profile integrations up -d`
 
 ## Data model
 
-`agents`, `projects`, `tasks`, `task_dependencies`, `agent_runs`,
-`pull_requests`, `events` — see `orchestrator/migrations/001_init.sql`.
+`agents`, `projects`, `tasks` (incl. `redmine_issue_id` for the
+Redmine sync), `task_dependencies`, `agent_runs`, `pull_requests`,
+`events`, `schema_migrations` — see
+`orchestrator/migrations/001_init.sql` + `002_redmine_sync.sql`.
 Migrations run automatically on orchestrator boot (idempotent).
 
 ## Security notes
@@ -518,12 +523,13 @@ Migrations run automatically on orchestrator boot (idempotent).
 
 1. **Credential broker** — scoped git permissions per agent instead of a
    shared token.
-2. **Task tracker adapter** — Redmine is wired in as the human layer
-   (container + MCP bridge). The remaining piece is an orchestrator
-   adapter that mirrors tasks ↔ Redmine issues automatically (outbound
-   on create/status change, inbound poll for human edits), so the
-   mapping convention in `AGENTS.md` becomes enforced rather than
-   manual. Jira/GitHub Issues can follow the same adapter shape without
-   touching the DSH agents.
-3. **Railway deployment** — the compose services map 1:1 to Railway
+2. **More task-tracker adapters** — the Redmine↔orchestrator two-way
+   sync is implemented (see "Project management loop" above); Jira and
+   GitHub Issues adapters can follow the same shape
+   (`orchestrator/src/redmine.ts`) without touching the DSH agents.
+3. **CI on `develop`** — the GitHub Actions workflow built for TASK-144
+   (orchestrator build + typecheck, runner syntax check, orchestrator
+   image build) is not merged yet; it is a release gate for any
+   `release/` branch.
+4. **Railway deployment** — the compose services map 1:1 to Railway
    services; keep workspace isolation and pinned DSH.

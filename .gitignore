@@ -11,12 +11,19 @@ orchestrator/node_modules/
 orchestrator/dist/
 orchestrator/.pnpm-store/
 
+# Local pnpm content-addressable store (created at the workspace root
+# when installing backend/ or orchestrator/ with the default store)
+.pnpm-store/
+
+# DSH / agent workspace state (run logs, profiles, credentials)
+.dsh/
+.agent-team/
+
 # Agent workspaces (keep only the .gitkeep files)
 workspaces/*/*
 !workspaces/*/.gitkeep
 
-# Local database data (named volumes are used by compose;
-# ./data is reserved for bind-mount deployments)
+# Local database data (postgres and redis bind-mount ./data)
 data/*/*
 !data/*/.gitkeep
 
