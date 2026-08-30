@@ -1,0 +1,140 @@
+# ==========================================================
+# ai-dev-team — integrations (profile: integrations)
+#
+# Redmine (project management) + the MCP bridges the agents use
+# (redmine, playwright for UI testing, github for PR/issues).
+# Included from compose.yaml; enable with:
+#   docker compose --profile integrations up -d
+# ==========================================================
+
+services:
+  # ==========================================================
+  # Redmine project management (human-facing UI at
+  # http://localhost:3000). The orchestrator task DB remains the
+  # system of record for agent work; Redmine is the layer for
+  # humans (issues, wiki, Gantt, time tracking) that the
+  # pm/ba/tester/cto agents reach through the MCP bridge below.
+  # ==========================================================
+
+  redmine-db:
+    image: postgres:17-alpine
+    container_name: ai-team-redmine-db
+    restart: unless-stopped
+    profiles: ["integrations"]
+    environment:
+      POSTGRES_DB: redmine
+      POSTGRES_USER: redmine
+      POSTGRES_PASSWORD: ${REDMINE_DB_PASSWORD:-redmine_password}
+    volumes:
+      - redmine_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U redmine -d redmine"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - ai-team
+
+  redmine:
+    image: redmine:6.0-alpine
+    container_name: ai-team-redmine
+    restart: unless-stopped
+    profiles: ["integrations"]
+    environment:
+      REDMINE_DB_POSTGRES: redmine-db
+      REDMINE_DB_DATABASE: redmine
+      REDMINE_DB_USERNAME: redmine
+      REDMINE_DB_PASSWORD: ${REDMINE_DB_PASSWORD:-redmine_password}
+      # Stable session secret across container recreations;
+      # generate one with `openssl rand -hex 32`.
+      REDMINE_SECRET_KEY: ${REDMINE_SECRET_KEY:-}
+    ports:
+      - "${REDMINE_PORT:-3000}:3000"
+    depends_on:
+      redmine-db:
+        condition: service_healthy
+    healthcheck:
+      # Redmine responds on /login once Rails is up; any HTTP
+      # response (200/302) means the app is ready.
+      test: ["CMD-SHELL", "ruby -rnet/http -e 'begin; Net::HTTP.get_response(URI(\"http://localhost:3000/login\")); exit 0; rescue; exit 1; end'"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 60s
+    networks:
+      - ai-team
+
+  # ==========================================================
+  # Redmine MCP bridge (streamable-http at :8000/mcp, internal
+  # only — NOT published to the host). Holds the Redmine API key;
+  # DSH agents reach Redmine through mcp__redmine__* tools and
+  # never see the key themselves. Pin the image tag for
+  # reproducible builds (third-party image, MIT).
+  # ==========================================================
+
+  redmine-mcp:
+    image: ghcr.io/jztan/redmine-mcp-server:${REDMINE_MCP_IMAGE_TAG:-2.13.0}
+    container_name: ai-team-redmine-mcp
+    restart: unless-stopped
+    profiles: ["integrations"]
+    environment:
+      REDMINE_URL: http://redmine:3000
+      REDMINE_API_KEY: ${REDMINE_API_KEY:-}
+      REDMINE_MCP_READ_ONLY: "false"
+      SERVER_HOST: 0.0.0.0
+      SERVER_PORT: 8000
+    depends_on:
+      redmine:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+    networks:
+      - ai-team
+
+  # ==========================================================
+  # Playwright MCP (streamable-http at :8931/mcp, internal only
+  # — NOT published to the host). Drives a headless Chromium for
+  # the tester agent's UI tests; screenshots land in the shared
+  # artifacts dir which is also mounted into the tester's
+  # workspace (./workspaces/tester/artifacts).
+  # ==========================================================
+
+  playwright-mcp:
+    build:
+      context: .
+      dockerfile: docker/playwright-mcp/Dockerfile
+    image: ai-team/playwright-mcp:local
+    container_name: ai-team-playwright-mcp
+    restart: unless-stopped
+    profiles: ["integrations"]
+    volumes:
+      - ./workspaces/tester/artifacts:/artifacts
+    networks:
+      - ai-team
+
+  # ==========================================================
+  # GitHub MCP server (streamable-http at :8989/mcp, internal
+  # only — NOT published to the host). Official server, holds
+  # GITHUB_TOKEN; agents authenticate with the same token via
+  # the Authorization header in agents/shared/github.patch.yml.
+  # Pin the image digest for reproducible builds (MIT).
+  # ==========================================================
+
+  github-mcp:
+    image: ghcr.io/github/github-mcp-server@sha256:fbec75de11c255213fa08d80fb166abe73d851fff631c51c0079872967720699
+    container_name: ai-team-github-mcp
+    restart: unless-stopped
+    profiles: ["integrations"]
+    environment:
+      GITHUB_PERSONAL_ACCESS_TOKEN: ${GITHUB_TOKEN:-}
+      GITHUB_TOOLSETS: default,actions
+    command: ["http", "--port", "8989"]
+    networks:
+      - ai-team
+
+volumes:
+  redmine_db_data:

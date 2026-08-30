@@ -4,6 +4,8 @@ export interface Config {
     redisUrl: string;
     githubToken: string;
     gitlabToken: string;
+    redmineUrl: string;
+    redmineApiKey: string;
 }
 
 export function loadConfig(): Config {
@@ -14,5 +16,7 @@ export function loadConfig(): Config {
         redisUrl: process.env.REDIS_URL ?? 'redis://localhost:6379',
         githubToken: process.env.GITHUB_TOKEN ?? '',
         gitlabToken: process.env.GITLAB_TOKEN ?? '',
+        redmineUrl: process.env.REDMINE_URL ?? 'http://redmine:3000',
+        redmineApiKey: process.env.REDMINE_API_KEY ?? '',
     };
 }

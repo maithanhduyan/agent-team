@@ -12,17 +12,21 @@ setup:
 build: setup
 	docker compose build
 
-# Start the whole stack (infra + orchestrator + all 5 agents)
+# Start the whole stack (infra + orchestrator + agents + integrations)
 up: setup
-	docker compose up -d
+	docker compose --profile agents --profile integrations up -d
 
 # Start only infrastructure + orchestrator
 infra: setup
 	docker compose up -d postgres redis orchestrator
 
-# Start only the DSH agent containers (requires infra)
+# Start only the headless DSH agent containers (requires infra)
 agents: setup
-	docker compose up -d dsh-pm dsh-backend dsh-frontend dsh-tester dsh-reviewer
+	docker compose --profile agents up -d dsh-pm dsh-backend dsh-frontend dsh-tester dsh-reviewer
+
+# Start only the integrations (Redmine + MCP bridges)
+integrations: setup
+	docker compose --profile integrations up -d
 
 down:
 	docker compose down

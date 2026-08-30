@@ -1,0 +1,214 @@
+# ==========================================================
+# ai-dev-team — headless DSH agents (profile: agents)
+#
+# All seven services run the SAME image (docker/dsh/Dockerfile)
+# built from a pinned DSH commit; each is differentiated only by
+# AGENT_ID / AGENT_ROLE / workspace mount / AGENTS.md overlay /
+# DSH home patch. Included from compose.yaml; enable with:
+#   docker compose --profile agents up -d
+# ==========================================================
+
+# Shared block for the DSH agents. `environment` is intentionally
+# NOT anchored: YAML merge keys are shallow, so a per-service
+# environment map would silently replace the anchored one.
+x-dsh-agent: &dsh-agent
+  image: ai-team/dsh-agent:local
+  build:
+    context: .
+    dockerfile: docker/dsh/Dockerfile
+    args:
+      DSH_REPO: ${DSH_REPO:-https://github.com/deepseek-ai/deepseek-harness.git}
+      DSH_REF: ${DSH_REF:-cd5ef8148158c3a752a658978873241fdf8e2bbc}
+  # Run as root: on Docker Desktop (Windows/macOS) bind mounts appear
+  # root-owned inside the VM, so the image's uid-1000 "dsh" user gets
+  # EACCES writing the workspace. Each agent is already isolated by
+  # its own container + workspace, so root inside is acceptable for
+  # this prototype (see README -> Security notes).
+  user: "0:0"
+  restart: unless-stopped
+  depends_on:
+    orchestrator:
+      condition: service_healthy
+  networks:
+    - ai-team
+
+services:
+  # ==========================================================
+  # PM Agent
+  # ==========================================================
+
+  dsh-pm:
+    <<: *dsh-agent
+    profiles: ["agents"]
+    container_name: dsh-pm
+    environment:
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:?Set DEEPSEEK_API_KEY in .env}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      # No sandbox backend (bubblewrap/Landlock) exists in this container,
+      # and DSH fails closed for confined modes; danger-full-access runs
+      # bash unconfined. Prototype-only: each agent is already isolated by
+      # its own container + workspace (see README -> Security notes).
+      DSH_PERMISSION_MODE: danger-full-access
+      AGENT_ID: pm
+      AGENT_ROLE: project-manager
+      ORCHESTRATOR_URL: http://orchestrator:8000
+      AGENT_WORKSPACE: /workspace/project
+      DSH_BIN: dsh
+      DSH_PROFILE: headless
+    volumes:
+      - ./workspaces/pm:/workspace/project
+      - ./agents/pm/AGENTS.md:/workspace/project/AGENTS.md:ro
+      - ./agents/skills/git-branching/SKILL.md:/workspace/project/.dsh/skills/git-branching/SKILL.md:ro
+      - ./agents/shared/cordis.patch.yml:/home/dsh/.dsh/cordis.patch.yml:ro
+
+  # ==========================================================
+  # Backend Agent
+  # ==========================================================
+
+  dsh-backend:
+    <<: *dsh-agent
+    profiles: ["agents"]
+    container_name: dsh-backend
+    environment:
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:?Set DEEPSEEK_API_KEY in .env}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      DSH_PERMISSION_MODE: danger-full-access
+      AGENT_ID: backend
+      AGENT_ROLE: backend-developer
+      ORCHESTRATOR_URL: http://orchestrator:8000
+      AGENT_WORKSPACE: /workspace/project
+      DSH_BIN: dsh
+      DSH_PROFILE: headless
+    volumes:
+      - ./workspaces/backend:/workspace/project
+      - ./agents/backend/AGENTS.md:/workspace/project/AGENTS.md:ro
+      - ./agents/skills/git-branching/SKILL.md:/workspace/project/.dsh/skills/git-branching/SKILL.md:ro
+      - ./agents/skills/github-workflow/SKILL.md:/workspace/project/.dsh/skills/github-workflow/SKILL.md:ro
+      # GitHub MCP bridge (see agents/shared/github.patch.yml)
+      - ./agents/shared/github.patch.yml:/home/dsh/.dsh/cordis.patch.yml:ro
+
+  # ==========================================================
+  # Frontend Agent
+  # ==========================================================
+
+  dsh-frontend:
+    <<: *dsh-agent
+    profiles: ["agents"]
+    container_name: dsh-frontend
+    environment:
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:?Set DEEPSEEK_API_KEY in .env}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      DSH_PERMISSION_MODE: danger-full-access
+      AGENT_ID: frontend
+      AGENT_ROLE: frontend-developer
+      ORCHESTRATOR_URL: http://orchestrator:8000
+      AGENT_WORKSPACE: /workspace/project
+      DSH_BIN: dsh
+      DSH_PROFILE: headless
+    volumes:
+      - ./workspaces/frontend:/workspace/project
+      - ./agents/frontend/AGENTS.md:/workspace/project/AGENTS.md:ro
+      - ./agents/skills/git-branching/SKILL.md:/workspace/project/.dsh/skills/git-branching/SKILL.md:ro
+      - ./agents/skills/github-workflow/SKILL.md:/workspace/project/.dsh/skills/github-workflow/SKILL.md:ro
+      # GitHub MCP bridge (see agents/shared/github.patch.yml)
+      - ./agents/shared/github.patch.yml:/home/dsh/.dsh/cordis.patch.yml:ro
+
+  # ==========================================================
+  # Tester Agent
+  # ==========================================================
+
+  dsh-tester:
+    <<: *dsh-agent
+    profiles: ["agents"]
+    container_name: dsh-tester
+    environment:
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:?Set DEEPSEEK_API_KEY in .env}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      DSH_PERMISSION_MODE: danger-full-access
+      AGENT_ID: tester
+      AGENT_ROLE: qa-engineer
+      ORCHESTRATOR_URL: http://orchestrator:8000
+      AGENT_WORKSPACE: /workspace/project
+      DSH_BIN: dsh
+      DSH_PROFILE: headless
+    volumes:
+      - ./workspaces/tester:/workspace/project
+      - ./agents/tester/AGENTS.md:/workspace/project/AGENTS.md:ro
+      - ./agents/skills/git-branching/SKILL.md:/workspace/project/.dsh/skills/git-branching/SKILL.md:ro
+      - ./agents/skills/ui-testing/SKILL.md:/workspace/project/.dsh/skills/ui-testing/SKILL.md:ro
+      # Redmine + Playwright MCP bridges (see agents/tester/cordis.patch.yml)
+      - ./agents/tester/cordis.patch.yml:/home/dsh/.dsh/cordis.patch.yml:ro
+
+  # ==========================================================
+  # Reviewer Agent
+  # ==========================================================
+
+  dsh-reviewer:
+    <<: *dsh-agent
+    profiles: ["agents"]
+    container_name: dsh-reviewer
+    environment:
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:?Set DEEPSEEK_API_KEY in .env}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      DSH_PERMISSION_MODE: danger-full-access
+      AGENT_ID: reviewer
+      AGENT_ROLE: code-reviewer
+      ORCHESTRATOR_URL: http://orchestrator:8000
+      AGENT_WORKSPACE: /workspace/project
+      DSH_BIN: dsh
+      DSH_PROFILE: headless
+    volumes:
+      - ./workspaces/reviewer:/workspace/project
+      - ./agents/reviewer/AGENTS.md:/workspace/project/AGENTS.md:ro
+      - ./agents/skills/git-branching/SKILL.md:/workspace/project/.dsh/skills/git-branching/SKILL.md:ro
+      - ./agents/skills/github-workflow/SKILL.md:/workspace/project/.dsh/skills/github-workflow/SKILL.md:ro
+      # GitHub MCP bridge (see agents/shared/github.patch.yml)
+      - ./agents/shared/github.patch.yml:/home/dsh/.dsh/cordis.patch.yml:ro
+
+  # ==========================================================
+  # BA Agent (business analyst)
+  # ==========================================================
+
+  dsh-ba:
+    <<: *dsh-agent
+    profiles: ["agents"]
+    container_name: dsh-ba
+    environment:
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:?Set DEEPSEEK_API_KEY in .env}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      DSH_PERMISSION_MODE: danger-full-access
+      AGENT_ID: ba
+      AGENT_ROLE: business-analyst
+      ORCHESTRATOR_URL: http://orchestrator:8000
+      AGENT_WORKSPACE: /workspace/project
+      DSH_BIN: dsh
+      DSH_PROFILE: headless
+    volumes:
+      - ./workspaces/ba:/workspace/project
+      - ./agents/ba/AGENTS.md:/workspace/project/AGENTS.md:ro
+      - ./agents/skills/git-branching/SKILL.md:/workspace/project/.dsh/skills/git-branching/SKILL.md:ro
+      - ./agents/shared/cordis.patch.yml:/home/dsh/.dsh/cordis.patch.yml:ro
+
+  # ==========================================================
+  # CTO Agent (architect)
+  # ==========================================================
+
+  dsh-cto:
+    <<: *dsh-agent
+    profiles: ["agents"]
+    container_name: dsh-cto
+    environment:
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:?Set DEEPSEEK_API_KEY in .env}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      DSH_PERMISSION_MODE: danger-full-access
+      AGENT_ID: cto
+      AGENT_ROLE: architect
+      ORCHESTRATOR_URL: http://orchestrator:8000
+      AGENT_WORKSPACE: /workspace/project
+      DSH_BIN: dsh
+      DSH_PROFILE: headless
+    volumes:
+      - ./workspaces/cto:/workspace/project
+      - ./agents/cto/AGENTS.md:/workspace/project/AGENTS.md:ro
+      - ./agents/skills/git-branching/SKILL.md:/workspace/project/.dsh/skills/git-branching/SKILL.md:ro
+      - ./agents/shared/cordis.patch.yml:/home/dsh/.dsh/cordis.patch.yml:ro

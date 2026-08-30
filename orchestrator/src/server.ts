@@ -5,6 +5,7 @@ import { createRedis } from './redis.js';
 import agentsRoutes from './agents.js';
 import tasksRoutes from './tasks.js';
 import eventsRoutes from './events.js';
+import { importRedmineIssues } from './redmine.js';
 import type { Ctx } from './types.js';
 
 const config = loadConfig();
@@ -44,6 +45,18 @@ process.on('SIGINT', () => void shutdown('SIGINT'));
 
 try {
     await app.listen({ port: config.port, host: '0.0.0.0' });
+    // Two-way Redmine sync poller (fail-open; disabled when no API key).
+    // Imports open Redmine issues as tasks; result updates are handled in
+    // the run-result route.
+    if (config.redmineApiKey) {
+        void importRedmineIssues(ctx).catch((err) => app.log.warn(`[redmine] initial import failed: ${(err as Error).message}`));
+        setInterval(() => {
+            void importRedmineIssues(ctx).catch((err) => app.log.warn(`[redmine] poll failed: ${(err as Error).message}`));
+        }, 30_000);
+    }
+    else {
+        app.log.info('[redmine] sync disabled (no REDMINE_API_KEY)');
+    }
 }
 catch (err) {
     app.log.error(err);

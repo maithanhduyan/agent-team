@@ -1,4 +1,5 @@
 import { publishEvent } from './events.js';
+import { updateRedmineOnResult } from './redmine.js';
 import type { Ctx } from './types.js';
 
 /**
@@ -281,6 +282,19 @@ export default async function tasksRoutes(app: any, opts: { ctx: Ctx }) {
             run_id: run.id,
             payload: { exit_code, branch, pr_url, summary },
         });
+        // Two-way Redmine sync: close/reject the linked issue with a note.
+        const linkedTask = await db.query('select id, title, redmine_issue_id from tasks where id = $1', [
+            run.task_id,
+        ]);
+        if (linkedTask.rows[0]) {
+            await updateRedmineOnResult(ctx, linkedTask.rows[0], {
+                status,
+                summary,
+                branch,
+                pr_url,
+                exit_code,
+            });
+        }
         if (status === 'succeeded') {
             await maybeDispatchDependents(ctx, run.task_id);
         }

@@ -337,6 +337,38 @@ GitHub details:
   contains the token).
 - Workflow: see `agents/skills/github-workflow/SKILL.md`.
 
+## Project management loop (Redmine ↔ Orchestrator)
+
+Two-way sync makes Redmine the human front-end for the team's work:
+
+- **Redmine → orchestrator** (poller, every 30s): open issues of the
+  Redmine project whose subject follows `[<agent>] <title>` (agent ∈
+  pm/ba/frontend/backend/tester/reviewer/cto/owner) are imported as
+  tasks and the issue moves to *In Progress*. Import is idempotent
+  and never auto-dispatches — dispatch stays a human/PM/owner
+  decision.
+- **orchestrator → Redmine** (on run result): the linked issue is
+  closed (`succeeded`) or rejected (`failed`) with a note carrying
+  the summary, branch and PR URL.
+- Needs `REDMINE_API_KEY` in `.env` (passed to the orchestrator);
+  sync is disabled without it and is always fail-open.
+- Tracker "Task" (id 4) is the import source; see
+  `orchestrator/src/redmine.ts` and `migrations/002_redmine_sync.sql`.
+
+## Compose layout
+
+`docker-compose.yml` was split into layers (Compose `include` +
+profiles) so the stack can be started partially:
+
+| File | Contents | Profile |
+|---|---|---|
+| `compose.yaml` | postgres, redis, orchestrator, dashboard, dsh-owner | (always on) |
+| `compose.agents.yaml` | 7 headless agents (pm/ba/backend/frontend/tester/reviewer/cto) | `--profile agents` |
+| `compose.integrations.yaml` | redmine, redmine-mcp, playwright-mcp, github-mcp | `--profile integrations` |
+
+Full stack: `docker compose --profile agents --profile integrations up -d`
+(or `make up`). Core only: `docker compose up -d`.
+
 ## Data model
 
 `agents`, `projects`, `tasks`, `task_dependencies`, `agent_runs`,
