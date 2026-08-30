@@ -1,0 +1,182 @@
+/* agent-team frontend — app shell base styles.
+   Palette mirrors the project's existing dark UI (see dashboard/). */
+
+:root {
+  color-scheme: dark;
+
+  --bg: #111418;
+  --bg-panel: #1a1f26;
+  --bg-elevated: #1d232b;
+  --border: #2a3038;
+  --text: #e6e6e6;
+  --text-muted: #9aa4b0;
+  --accent: #7ee787;
+  --accent-strong: #3fb950;
+  --danger: #f85149;
+
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial,
+    sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color: var(--text);
+  background-color: var(--bg);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* ---- App shell ---- */
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+}
+
+.app-header__inner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: 0.8rem 1.2rem;
+}
+
+.app-brand {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.app-title {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.nav-list {
+  display: flex;
+  gap: 0.25rem;
+  list-style: none;
+  margin: 0 0 0 auto;
+  padding: 0;
+}
+
+.nav-link {
+  display: inline-block;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.95rem;
+}
+
+.nav-link:hover {
+  color: var(--text);
+  background: var(--bg-elevated);
+}
+
+.nav-link--active {
+  color: var(--accent);
+  background: var(--bg-elevated);
+  font-weight: 600;
+}
+
+.app-main {
+  flex: 1;
+  width: 100%;
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: 2rem 1.2rem 3rem;
+}
+
+.app-footer {
+  border-top: 1px solid var(--border);
+  background: var(--bg-panel);
+}
+
+.app-footer p {
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: 0.8rem 1.2rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* ---- Pages ---- */
+
+.home-page,
+.not-found {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 2.5rem 2rem;
+}
+
+.home-page h1,
+.not-found h1 {
+  margin: 0 0 0.75rem;
+  font-size: 1.75rem;
+  line-height: 1.2;
+}
+
+.home-tagline {
+  margin: 0 0 1rem;
+  font-size: 1.05rem;
+  color: var(--text);
+}
+
+.home-hint {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.not-found p {
+  margin: 0 0 1.25rem;
+  color: var(--text-muted);
+}
+
+.btn {
+  display: inline-block;
+  padding: 0.45rem 1rem;
+  border-radius: 6px;
+  background: var(--accent-strong);
+  color: #04140a;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.btn:hover {
+  filter: brightness(1.1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
