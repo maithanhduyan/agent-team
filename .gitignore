@@ -11,6 +11,10 @@ orchestrator/node_modules/
 orchestrator/dist/
 orchestrator/.pnpm-store/
 
+# Local pnpm content-addressable store (created at workspace root when
+# installing backend/ or orchestrator/ with the default store location)
+.pnpm-store/
+
 # Agent workspaces (keep only the .gitkeep files)
 workspaces/*/*
 !workspaces/*/.gitkeep
