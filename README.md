@@ -108,6 +108,9 @@ ai-dev-team/
 ├── dashboard/                # task board (nginx + static single-file UI)
 │   ├── nginx.conf            # proxies /api to the orchestrator
 │   └── html/index.html       # board: projects/tasks/agents/events
+├── frontend/                 # product frontend: Vite + React + TS app shell
+│   ├── package.json          #   dev/build/test scripts (see frontend/README.md)
+│   └── src/                  #   routes, app shell layout, pages
 ├── scripts/                  # host-side triggers (monthly closing, ...)
 │   ├── monthly-close.ps1     #   create + dispatch the accountant task
 │   └── monthly-close.sh      #   (PowerShell / bash for cron scheduling)
@@ -120,6 +123,21 @@ ai-dev-team/
 │   └── migrations/           # SQL, applied automatically on boot
 └── data/                     # reserved for bind-mount deployments
     ├── postgres/  redis/     #   (compose uses named volumes by default)
+```
+
+## Frontend app
+
+The product frontend lives in `frontend/` — a Vite + React + TypeScript
+single-page app with an app shell (header / main / footer) and React Router
+client-side routing. The placeholder home page is served at `/`; unknown paths
+fall back to a 404 page. See `frontend/README.md` for details.
+
+```bash
+cd frontend
+npm ci              # install from the committed lockfile
+npm run dev         # dev server → http://localhost:5173
+npm test            # Vitest component/interaction tests
+npm run build       # type-check + production build → dist/
 ```
 
 ## Prerequisites
