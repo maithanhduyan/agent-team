@@ -157,13 +157,20 @@ export class CoreWriter {
     }
 
     /**
-     * Update the status/validity of an existing fact in place
-     * (consolidation only — decay/expiry/stale transitions, §10.4).
+     * Update the status/validity/importance of an existing fact in place
+     * (consolidation only — decay/expiry/stale transitions, §10.4, and
+     * the T05 decay pass which also halves `importance` and clears `hot`
+     * on demotion; ADR-013).
      */
     async updateStatus(
         ctx: ConsolidationContext,
         factId: string,
-        patch: { status?: FactStatus; valid_to?: ISOTimestamp | null },
+        patch: {
+            status?: FactStatus;
+            valid_to?: ISOTimestamp | null;
+            importance?: number;
+            hot?: boolean;
+        },
     ): Promise<FactBlock> {
         this.assertConsolidation(ctx);
         await this.ensureDir();
