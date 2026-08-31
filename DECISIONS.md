@@ -12,11 +12,49 @@ the project architecture, or the product scope changes.
 > (TASK-6644, T03 core memory module) adds ADR-011; PR #15 (TASK-6645,
 > T04 retrieval tools) adds ADR-012; PR #16 (TASK-6646, T05
 > consolidation job) adds ADR-013; PR #17 (TASK-6654, T08 Telegram
-> bridge) adds ADR-014. On merge, keep all sets; the
+> bridge) adds ADR-014; PR #18 (TASK-7214, T10 skill-evolution
+> acceptance criteria) adds ADR-015. On merge, keep all sets; the
 > second PR to merge reconciles the file (trivial append). Per the cto
 > ADR-ownership rule (see the TASK-179 version of this file), the cto
 > assigns final numbers on merge; working numbers on branches never
 > collide because each PR appends its own range.
+
+## ADR-015 — Skill evolution acceptance criteria: quantitative guardrails + done definition (T10)
+
+- **Status:** proposed (TASK-7214 / Redmine #37; T10 — BA acceptance
+  criteria for the GEPA skill evolution pipeline, plan #22 T09/T10)
+- **Date:** 2026-09
+- **Context:** v0.5 evolves `SKILL.md` skills (first `install-dsh`) via
+  a GEPA pipeline (Q4: Python sidecar core + Node/TS integration;
+  Q5: multi-model judge team). SEC-GEPA-01…11
+  (`docs/security-review-memory.md` §5) set the mandatory security
+  constraints but not the measurable acceptance thresholds. T11–T15
+  need an unambiguous definition of what makes a dataset valid, a
+  candidate acceptable, and one evolution round "done".
+- **Decision (BA scope, acceptance contract):**
+  - **Eval dataset** is valid iff sources are traceable (sandbox test
+    or real error log, §4.1), every case is `{context, error, fix}` and
+    schema-valid (§4.2), coverage minima are met (`EVAL_MIN_CASES`=20,
+    ≥3 per scenario class, every T14 manifest class present, §4.3), and
+    there are 0 secret-scan hits (SEC-GEPA-08, §4.4).
+  - **Guardrails are quantitative gates**: fitness = 100% on the pinned
+    dataset (SEC-GEPA-02), size ≤ 15 KB (SEC-GEPA-03), 0 regressions
+    vs base skill on the identical suite (SEC-GEPA-04), 0 hot-swap
+    events (SEC-GEPA-05), 2 approvals owner+cto (SEC-GEPA-06), 0
+    auto-merge events (SEC-GEPA-07), per-model cost caps with
+    all-capped ⇒ pause (SEC-GEPA-09), pinned sidecar deps (SEC-GEPA-10),
+    complete + replayable audit trail (SEC-GEPA-11). SEC-GEPA-01
+    (isolation) = 0 escape events.
+  - **Done for one round** = all merge conditions D-1…D-9 hold (§7.1);
+    any reject condition R-1…R-11 ⇒ **rejected — no merge** (§7.2);
+    cost-capped runs end as **paused** (R-10).
+  - Defaults are env-configurable (`EVAL_*`, `EVOLUTION_*`); the fitness
+    floor and size cap are fixed and may not be lowered/raised.
+- **Consequences:** T11 builds datasets against §4; T12 gates candidates
+  against §5; T13 implements the PR + human-review workflow of §6 with
+  the audit trail; T14 makes coverage/fitness measurable; T15/T19 review
+  against this contract. Full criteria:
+  `docs/skill-evolution-acceptance.md`.
 
 ## ADR-014 — T08 Telegram bridge: transport abstraction, sandbox-first, command surface
 
@@ -224,7 +262,7 @@ the project architecture, or the product scope changes.
   `buildMemorySystemPrompt` for the Telegram bridge; T21 (v0.5) renders
   search results/provenance via the SEC-MEM-01 envelope.
 
-
+## ADR-010 — Security requirements for the multi-model judge team (Q5)
 
 - **Status:** accepted (TASK-6539 / Redmine #27; T02 security review
   of Q5; supplements ADR-008)

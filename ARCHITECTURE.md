@@ -379,6 +379,10 @@ hermes-agent-self-evolution); **integration = Node/TS native**.
   before merge, no auto-merge, no secrets in candidates, cost caps,
   dependency pinning, audit trail) — full list in
   `docs/security-review-memory.md` §5. T09 must implement all of them.
+  The **measurable acceptance criteria** (metric + threshold + how to
+  verify) for the pipeline, the eval dataset and the PR + human-review
+  workflow, plus the definition of "done" for one evolution round, are
+  in `docs/skill-evolution-acceptance.md` (T10, ADR-015).
 
 ### 8.4 Multi-model judge team (Q5) — security
 
