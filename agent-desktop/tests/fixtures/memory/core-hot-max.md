@@ -6,8 +6,8 @@ count: 12
 
 # Core Memory (hot-max fixture)
 
-<!-- fact_h0001 -->
-## fact_h0001: Hot fact number 1
+<!-- fact_0101 -->
+## fact_0101: Hot fact number 1
 
 - **statement:** This is hot fact number 1 for the owner.
 - **provenance:** user_stated
@@ -21,8 +21,8 @@ count: 12
 - **last_observed:** 2026-08-31T12:00:00.000Z
 - **status:** active
 
-<!-- fact_h0002 -->
-## fact_h0002: Hot fact number 2
+<!-- fact_0102 -->
+## fact_0102: Hot fact number 2
 
 - **statement:** This is hot fact number 2 for the owner.
 - **provenance:** user_stated
@@ -36,8 +36,8 @@ count: 12
 - **last_observed:** 2026-08-31T12:00:00.000Z
 - **status:** active
 
-<!-- fact_h0003 -->
-## fact_h0003: Hot fact number 3
+<!-- fact_0103 -->
+## fact_0103: Hot fact number 3
 
 - **statement:** This is hot fact number 3 for the owner.
 - **provenance:** user_stated
@@ -51,8 +51,8 @@ count: 12
 - **last_observed:** 2026-08-31T12:00:00.000Z
 - **status:** active
 
-<!-- fact_h0004 -->
-## fact_h0004: Hot fact number 4
+<!-- fact_0104 -->
+## fact_0104: Hot fact number 4
 
 - **statement:** This is hot fact number 4 for the owner.
 - **provenance:** user_stated
@@ -66,8 +66,8 @@ count: 12
 - **last_observed:** 2026-08-31T12:00:00.000Z
 - **status:** active
 
-<!-- fact_h0005 -->
-## fact_h0005: Hot fact number 5
+<!-- fact_0105 -->
+## fact_0105: Hot fact number 5
 
 - **statement:** This is hot fact number 5 for the owner.
 - **provenance:** user_stated
@@ -81,8 +81,8 @@ count: 12
 - **last_observed:** 2026-08-31T12:00:00.000Z
 - **status:** active
 
-<!-- fact_h0006 -->
-## fact_h0006: Hot fact number 6
+<!-- fact_0106 -->
+## fact_0106: Hot fact number 6
 
 - **statement:** This is hot fact number 6 for the owner.
 - **provenance:** user_stated
@@ -96,8 +96,8 @@ count: 12
 - **last_observed:** 2026-08-31T12:00:00.000Z
 - **status:** active
 
-<!-- fact_h0007 -->
-## fact_h0007: Hot fact number 7
+<!-- fact_0107 -->
+## fact_0107: Hot fact number 7
 
 - **statement:** This is hot fact number 7 for the owner.
 - **provenance:** user_stated
@@ -111,8 +111,8 @@ count: 12
 - **last_observed:** 2026-08-31T12:00:00.000Z
 - **status:** active
 
-<!-- fact_h0008 -->
-## fact_h0008: Hot fact number 8
+<!-- fact_0108 -->
+## fact_0108: Hot fact number 8
 
 - **statement:** This is hot fact number 8 for the owner.
 - **provenance:** user_stated
@@ -126,8 +126,8 @@ count: 12
 - **last_observed:** 2026-08-31T12:00:00.000Z
 - **status:** active
 
-<!-- fact_h0009 -->
-## fact_h0009: Hot fact number 9
+<!-- fact_0109 -->
+## fact_0109: Hot fact number 9
 
 - **statement:** This is hot fact number 9 for the owner.
 - **provenance:** user_stated
@@ -141,8 +141,8 @@ count: 12
 - **last_observed:** 2026-08-31T12:00:00.000Z
 - **status:** active
 
-<!-- fact_h0010 -->
-## fact_h0010: Hot fact number 10
+<!-- fact_0110 -->
+## fact_0110: Hot fact number 10
 
 - **statement:** This is hot fact number 10 for the owner.
 - **provenance:** user_stated
@@ -156,8 +156,8 @@ count: 12
 - **last_observed:** 2026-08-31T12:00:00.000Z
 - **status:** active
 
-<!-- fact_h0011 -->
-## fact_h0011: Hot fact number 11
+<!-- fact_0111 -->
+## fact_0111: Hot fact number 11
 
 - **statement:** This is hot fact number 11 for the owner.
 - **provenance:** user_stated
@@ -171,8 +171,8 @@ count: 12
 - **last_observed:** 2026-08-31T12:00:00.000Z
 - **status:** active
 
-<!-- fact_h0012 -->
-## fact_h0012: Hot fact number 12
+<!-- fact_0112 -->
+## fact_0112: Hot fact number 12
 
 - **statement:** This is hot fact number 12 for the owner.
 - **provenance:** user_stated

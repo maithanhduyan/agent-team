@@ -22,6 +22,49 @@ the project architecture, or the product scope changes.
 > assigns final numbers on merge; working numbers on branches never
 > collide because each PR appends its own range.
 
+## ADR-019 — T04 hot-fact injection applies the Day-30 decay projection read-time (Redmine #39)
+
+- **Status:** accepted (TASK-7437 / Redmine #39; T04 bugfix on top of
+  ADR-012 — backend implements the T06-pinned post-decay projection)
+- **Date:** 2026-09
+- **Context:** T06 re-run (Redmine #32) pinned hot-fact selection on the
+  **post-decay projection** at REF_NOW (spec §10.4): `fact_0005` (hot,
+  active, 0.9) is not re-observed for ~62 days → 0.9 → 0.225/stale →
+  must NOT be injected. T04 `loadHotFacts` read `core.md` as-is, so a
+  session start **before the first consolidation run** injected the
+  decayed fact (`['fact_0001','fact_0005','fact_0002','fact_0003']`
+  instead of the pinned `['fact_0001','fact_0002','fact_0003']`).
+  Backend was asked to decide the contract: (a) apply the decay
+  projection inside `loadHotFacts` before selection, or (b) run a decay
+  pass before session start.
+- **Decision (backend scope):** **(a) — `loadHotFacts` applies the
+  §10.4 Day-30 decay projection over `last_observed` before selecting
+  hot facts.**
+  - The projection is a **pure read-time view** over `core.md`
+    (`projectDay30Decay`): importance halved per `decayDays` cycle
+    (floor `decayFloor`), `stale` after 2 cycles, hot demoted below the
+    hot threshold; selection then uses the projected importance/status.
+    Still one file read, no retrieval, no writes, no L2 read — the
+    §6.3 "0 ms" contract is preserved.
+  - (b) was rejected: running the decay pass at session start would
+    mutate `core.md` on a read path, require a full consolidation job
+    (LLM judge, L2 reads) at every session start, and violate R-CORE-1
+    (core.md written only by consolidation).
+  - The projection is deliberately **not** the idempotent decay pass:
+    it recomputes from `last_observed` alone (matching the T06 pin in
+    `00-fixture-selfcheck`), so it can be *at least as aggressive* as
+    the persisted state — never less. The consolidation job (T05) stays
+    the authority that persists decay into `core.md`.
+  - `MEMORY_DECAY_DAYS` is honored via a `decayDays` option on
+    `loadHotFacts`/`injectHotFacts` (default 30); the bridge passes
+    `memCfg.decayDays`. `projectDay30Decay` is exported for unit
+    testing.
+- **Consequences:** T06 row 5 asserts the pinned projection against the
+  implementation (suite green for row 5); the fixture `core-hot-max.md`
+  now uses spec-valid `fact_<n>` ids so the `MEMORY_HOT_MAX` cap case
+  parses (T06 fixture defect fixed in this task); spec §6.3/§10.4
+  updated to state the projection.
+
 ## ADR-018 — Skill evolution acceptance criteria: quantitative guardrails + done definition (T10)
 
 - **Status:** proposed (TASK-7214 / Redmine #37; T10 — BA acceptance

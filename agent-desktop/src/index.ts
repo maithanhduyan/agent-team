@@ -142,11 +142,15 @@ export {
 export {
     loadHotFacts,
     injectHotFacts,
+    projectDay30Decay,
     DEFAULT_HOT_IMPORTANCE,
     DEFAULT_HOT_MAX,
+    DEFAULT_DECAY_DAYS,
+    DEFAULT_DECAY_FLOOR,
     type HotFact,
     type HotFactsOptions,
     type HotFactsInjection,
+    type DecayProjection,
 } from './hot-facts.js';
 
 export {
