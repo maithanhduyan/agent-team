@@ -119,7 +119,7 @@ skipped** and the file parses to **0 facts with no error**.
   (`\w+`) DOES parse the broken block and flags it invalid.
 - Verdict: **T03 divergence** — a malformed block (bad id or missing key)
   is silently discarded instead of raising `FactBlockError` (silent data
-  is a real availability concern, spec §11) — filed #38.
+  loss is a real availability concern, spec §11) — filed #38.
 
 ### F-ORD — T03 R-MEM-1: "readAll returns records in append order"
 `10-writer.test.mjs:144` asserts the returned records' `ts` are sorted.
