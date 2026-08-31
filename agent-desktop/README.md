@@ -8,6 +8,12 @@ security review [`docs/security-review-memory.md`](../../docs/security-review-me
 
 > Scope: **T03 + T04 + T05 + T08 (Telegram bridge)**. T06 (test
 > fixtures), T07 (review) build on this package.
+>
+> v0.5 (Skill Evolution): the GEPA skill-evolution pipeline is
+> designed in [`docs/gepa-pipeline.md`](../../docs/gepa-pipeline.md)
+> (T09, ADR-015/016/017) — evolution runner + fitness gate (T12) and
+> the PR workflow (T13) build on the judge/panel machinery in this
+> package (`src/llm-provider.ts`, `src/judge.ts`, `src/costs.ts`).
 
 ## What this module provides
 
