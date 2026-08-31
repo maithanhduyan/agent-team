@@ -1,5 +1,3 @@
-# agent-desktop — v0.4 Memory Foundation
-
 `agent-desktop` is a subproject of agent-team: a DSH deployment on the
 owner's Windows laptop with a Telegram bridge (plan #22, Q1). This
 package is the **memory foundation (T03 writers + T04 retrieval tools +
@@ -413,3 +411,18 @@ Memory data is runtime state: `agent-desktop/memory/*` is gitignored
 permissions; files default to `0600` (spec §11). The consolidation job
 adds `consolidation-cursor.json` (cursor) and `costs-YYYYMM.json`
 (per-model spend, SEC-COST-01) to the memory dir.
+
+## Tests (T06)
+
+- Fixtures + suite: [`tests/`](tests/) — see [`tests/README.md`](tests/README.md)
+- Results report: [`TESTING.md`](TESTING.md)
+
+```bash
+node tests/run-suite.mjs   # from this directory
+```
+
+> Status note (PM, TASK-7174): T06 fixtures were authored before the
+> backend PRs (#14–#17) merged; the implementation suites were skip-aware
+> because the probe paths predated the TS implementation. With T03/T04/T05
+> on develop, the full suite runs unskipped after the tester adapter update
+> (Redmine #35, step A3) — results recorded in TESTING.md.

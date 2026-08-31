@@ -1,0 +1,40 @@
+{
+  "meta": {
+    "spec": "docs/memory-spec.md §8.3 (reflection format), acceptance §13 row 9",
+    "note": "Reflection records MUST have content shape {context, error, fix} and provenance model_inferred. Missing/extra-invalid keys -> schema error (record not written)."
+  },
+  "valid": [
+    {
+      "name": "efs-lesson",
+      "record": {
+        "type": "reflection",
+        "provenance": "model_inferred",
+        "content": {
+          "context": "install-dsh failed on EFS-encrypted C:\\Users\\owner",
+          "error": "CopyFileEx returned EFS error 1314 (missing privilege)",
+          "fix": "Use raw file copy with decryption; check EFS before install"
+        }
+      }
+    }
+  ],
+  "invalid": [
+    {
+      "name": "missing-fix",
+      "record": {
+        "type": "reflection",
+        "provenance": "model_inferred",
+        "content": { "context": "install failed", "error": "EFS 1314" }
+      },
+      "expected": { "error_contains": "fix" }
+    },
+    {
+      "name": "wrong-provenance",
+      "record": {
+        "type": "reflection",
+        "provenance": "user_stated",
+        "content": { "context": "x", "error": "y", "fix": "z" }
+      },
+      "expected": { "error_contains": "provenance" }
+    }
+  ]
+}

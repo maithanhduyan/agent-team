@@ -1,0 +1,24 @@
+{
+  "meta": {
+    "spec": "docs/memory-spec.md §10.2.2 / §11 (MEMORY_INJECTION_PATTERNS)",
+    "note": "T06 shipped default pattern list (extendable). The writer MUST quarantine any record whose text matches any pattern (case-insensitive substring match on the literal pattern). Records never reach L3/L4.",
+    "matching": "case-insensitive substring match"
+  },
+  "patterns": [
+    "ignore previous instructions",
+    "ignore all previous instructions",
+    "disregard all previous instructions",
+    "system prompt",
+    "system prompt:",
+    "you are now",
+    "you are a",
+    "act as",
+    "override your instructions",
+    "forget everything",
+    "reveal your system prompt",
+    "do not follow",
+    "<<SYS>>",
+    "[INST]",
+    "jailbreak"
+  ]
+}

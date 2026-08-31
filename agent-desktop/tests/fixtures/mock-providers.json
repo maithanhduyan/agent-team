@@ -1,0 +1,116 @@
+{
+  "meta": {
+    "spec": "docs/memory-spec.md §9 (judge gate), §9.4 consensus, §9.5 cost caps; acceptance §13 rows 11-12; ADR-008/010",
+    "note": "All scenarios use MOCK LLM providers — no real API keys, no network. Each scenario defines the enabled panel (per JUDGE_PANEL_MODELS), per-model responses (verdict payloads from judge-verdicts.json, or error/timeout), per-model monthly cost state, and the expected gate outcome.",
+    "consensus": "any | majority",
+    "failSafe": "if all enabled models fail (error/timeout/malformed) the gate returns error and the write is NOT performed (R-JUDGE-4); if all models are capped consolidation pauses safely (SEC-COST-01)."
+  },
+  "scenarios": [
+    {
+      "id": "s1-single-deepseek-approve",
+      "case": "§9.4 R-JUDGE-1 — single model, verdict decisive",
+      "panel": ["deepseek"],
+      "consensus": "any",
+      "models": {
+        "deepseek": { "enabled": true, "spentUsd": 3.0, "capUsd": 15, "response": { "kind": "verdict", "name": "approve" } }
+      },
+      "expected": { "gate": "approve", "write_performed": true }
+    },
+    {
+      "id": "s2-two-models-one-malformed-any",
+      "case": "§9.3 — malformed verdict counts as error for that model; consensus any still approves via deepseek",
+      "panel": ["deepseek", "gpt4"],
+      "consensus": "any",
+      "models": {
+        "deepseek": { "enabled": true, "spentUsd": 1.0, "capUsd": 15, "response": { "kind": "verdict", "name": "approve" } },
+        "gpt4": { "enabled": true, "spentUsd": 0.5, "capUsd": 10, "response": { "kind": "malformed", "name": "not-json" } }
+      },
+      "expected": { "gate": "approve", "write_performed": true, "per_model": { "gpt4": "error" } }
+    },
+    {
+      "id": "s3-majority-approve",
+      "case": "§9.4 R-JUDGE-2 — majority of enabled panel approves",
+      "panel": ["deepseek", "gpt4", "gemini3"],
+      "consensus": "majority",
+      "models": {
+        "deepseek": { "enabled": true, "spentUsd": 1.0, "capUsd": 15, "response": { "kind": "verdict", "name": "approve" } },
+        "gpt4": { "enabled": true, "spentUsd": 0.5, "capUsd": 10, "response": { "kind": "verdict", "name": "approve" } },
+        "gemini3": { "enabled": true, "spentUsd": 0.2, "capUsd": 10, "response": { "kind": "verdict", "name": "reject" } }
+      },
+      "expected": { "gate": "approve", "write_performed": true }
+    },
+    {
+      "id": "s4-majority-reject",
+      "case": "§9.4 R-JUDGE-2 — tie/majority reject → reject with disagreement recorded",
+      "panel": ["deepseek", "gpt4", "gemini3"],
+      "consensus": "majority",
+      "models": {
+        "deepseek": { "enabled": true, "spentUsd": 1.0, "capUsd": 15, "response": { "kind": "verdict", "name": "approve" } },
+        "gpt4": { "enabled": true, "spentUsd": 0.5, "capUsd": 10, "response": { "kind": "verdict", "name": "reject" } },
+        "gemini3": { "enabled": true, "spentUsd": 0.2, "capUsd": 10, "response": { "kind": "verdict", "name": "reject" } }
+      },
+      "expected": { "gate": "reject", "write_performed": false, "reasons_include_disagreement": true }
+    },
+    {
+      "id": "s5-all-models-fail",
+      "case": "§9.4 R-JUDGE-4 — all enabled models fail → gate error, write NOT performed (fail-safe)",
+      "panel": ["deepseek", "gpt4"],
+      "consensus": "any",
+      "models": {
+        "deepseek": { "enabled": true, "spentUsd": 1.0, "capUsd": 15, "response": { "kind": "error", "message": "timeout after 30s" } },
+        "gpt4": { "enabled": true, "spentUsd": 0.5, "capUsd": 10, "response": { "kind": "malformed", "name": "missing-verdict" } }
+      },
+      "expected": { "gate": "error", "write_performed": false }
+    },
+    {
+      "id": "s6-cost-cap-auto-disable",
+      "case": "§9.5 — deepseek reaches monthly cap → auto-disabled; gpt4 (mock, approve) continues the panel",
+      "panel": ["deepseek", "gpt4"],
+      "consensus": "any",
+      "models": {
+        "deepseek": { "enabled": true, "spentUsd": 15.0, "capUsd": 15, "response": { "kind": "verdict", "name": "approve" } },
+        "gpt4": { "enabled": true, "spentUsd": 2.5, "capUsd": 10, "response": { "kind": "verdict", "name": "approve" } }
+      },
+      "expected": { "gate": "approve", "write_performed": true, "disabled_models": ["deepseek"] }
+    },
+    {
+      "id": "s7-all-capped-pause",
+      "case": "§9.5 / SEC-COST-01 — all enabled models capped → consolidation pauses safely, no unjudged write",
+      "panel": ["deepseek", "gpt4", "gemini3"],
+      "consensus": "any",
+      "models": {
+        "deepseek": { "enabled": true, "spentUsd": 15.0, "capUsd": 15, "response": { "kind": "verdict", "name": "approve" } },
+        "gpt4": { "enabled": true, "spentUsd": 10.0, "capUsd": 10, "response": { "kind": "verdict", "name": "approve" } },
+        "gemini3": { "enabled": true, "spentUsd": 10.0, "capUsd": 10, "response": { "kind": "verdict", "name": "approve" } }
+      },
+      "expected": { "gate": "paused", "write_performed": false, "reason": "all_models_capped" }
+    },
+    {
+      "id": "s8-revise-once-then-rejudge",
+      "case": "§9.4 R-JUDGE-3 — revise returns candidate for one regeneration, then re-judge; second revise/reject = reject",
+      "panel": ["deepseek"],
+      "consensus": "any",
+      "models": {
+        "deepseek": {
+          "enabled": true, "spentUsd": 1.0, "capUsd": 15,
+          "response_sequence": [
+            { "kind": "verdict", "name": "revise-with-edit" },
+            { "kind": "verdict", "name": "reject" }
+          ]
+        }
+      },
+      "expected": { "gate": "reject", "write_performed": false, "regeneration_cycles": 1 }
+    },
+    {
+      "id": "s9-missing-key-skip",
+      "case": "§9.1 / SEC-KEY-03 — model without key is skipped, not a failure",
+      "panel": ["deepseek", "gpt4"],
+      "consensus": "any",
+      "models": {
+        "deepseek": { "enabled": true, "spentUsd": 1.0, "capUsd": 15, "response": { "kind": "verdict", "name": "approve" } },
+        "gpt4": { "enabled": false, "spentUsd": 0, "capUsd": 10, "response": null, "reason": "no OPENAI_API_KEY" }
+      },
+      "expected": { "gate": "approve", "write_performed": true, "skipped_models": ["gpt4"] }
+    }
+  ]
+}

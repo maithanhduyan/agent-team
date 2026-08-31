@@ -1,0 +1,299 @@
+{
+  "meta": {
+    "spec": "docs/memory-spec.md §7.2 (acceptance §13)",
+    "files": "memory = sessions.jsonl + archives + core.md",
+    "re2": "RE2-safe subset; invalid regex -> error",
+    "unranked": "file/line order, capped by limit"
+  },
+  "cases": {
+    "efs": {
+      "params": {
+        "pattern": "EFS",
+        "files": "memory",
+        "case_sensitive": true,
+        "context_lines": 2,
+        "limit": 100
+      },
+      "expected": [
+        {
+          "file": "memory/sessions.jsonl",
+          "line": 7,
+          "text": "{\"id\":\"evt_a1b2c3d4e5f60007\",\"ts\":\"2026-08-25T09:00:00.000Z\",\"session_id\":\"ses_c3d4e5f6a7b80003\",\"type\":\"observation\",\"provenance\":\"tool_output\",\"importance\":0.8,\"valid_from\":\"2026-08-25T09:00:00.000Z\",\"valid_to\":null,\"content\":{\"text\":\"install-dsh failed on EFS-encrypted C:\\\\Users\\\\owner directory\",\"kind\":\"tool_result\"},\"source\":{\"kind\":\"tool\",\"ref\":\"tool:sandbox-test:efs-case\",\"detail\":\"error output captured\"},\"meta\":{\"tags\":[\"windows\",\"efs\",\"install\"]}}",
+          "before": [
+            "{\"id\":\"evt_a1b2c3d4e5f60005\",\"ts\":\"2026-08-31T00:00:00.000Z\",\"session_id\":\"ses_a1b2c3d4e5f60001\",\"type\":\"observation\",\"provenance\":\"model_inferred\",\"importance\":0.5,\"valid_from\":\"2026-08-31T00:00:00.000Z\",\"valid_to\":null,\"content\":{\"text\":\"vietnamese food delivery app preferences\",\"kind\":\"model_statement\"},\"source\":{\"kind\":\"model\",\"ref\":\"model:reflection\",\"detail\":\"inferred during session\"},\"meta\":{\"model\":\"deepseek-chat\",\"tags\":[\"preference\"]}}",
+            "{\"id\":\"evt_a1b2c3d4e5f60006\",\"ts\":\"2026-06-03T00:00:00.000Z\",\"session_id\":\"ses_b2c3d4e5f6a70002\",\"type\":\"observation\",\"provenance\":\"user_stated\",\"importance\":0.6,\"valid_from\":\"2026-06-03T00:00:00.000Z\",\"valid_to\":\"2026-08-22T00:00:00.000Z\",\"content\":{\"text\":\"user prefers vietnamese for chat messages\",\"kind\":\"preference\"},\"source\":{\"kind\":\"user\",\"ref\":\"telegram:chat:12345\",\"detail\":\"superseded preference\"},\"meta\":{\"tags\":[\"preference\",\"language\"]}}"
+          ],
+          "after": [
+            "{\"id\":\"evt_a1b2c3d4e5f60008\",\"ts\":\"2026-08-25T09:05:00.000Z\",\"session_id\":\"ses_c3d4e5f6a7b80003\",\"type\":\"tool_call\",\"provenance\":\"tool_output\",\"importance\":0.5,\"valid_from\":\"2026-08-25T09:05:00.000Z\",\"valid_to\":null,\"content\":{\"tool\":\"search_memory\",\"args\":{\"query\":\"efs\"},\"ok\":true},\"source\":{\"kind\":\"tool\",\"ref\":\"tool:search_memory\",\"detail\":\"\"},\"meta\":{}}",
+            "{\"id\":\"evt_a1b2c3d4e5f60009\",\"ts\":\"2026-08-26T10:00:00.000Z\",\"session_id\":null,\"type\":\"reflection\",\"provenance\":\"model_inferred\",\"importance\":0.6,\"valid_from\":\"2026-08-26T10:00:00.000Z\",\"valid_to\":null,\"content\":{\"context\":\"install-dsh failed on EFS-encrypted C:\\\\Users\\\\owner\",\"error\":\"CopyFileEx returned EFS error 1314 (missing privilege)\",\"fix\":\"use raw file copy with decryption; check EFS before install\"},\"source\":{\"kind\":\"model\",\"ref\":\"model:reflection\",\"detail\":\"consolidation reflect stage\"},\"meta\":{\"model\":\"deepseek-chat\",\"tags\":[\"lesson\",\"windows\"]}}"
+          ]
+        },
+        {
+          "file": "memory/sessions.jsonl",
+          "line": 9,
+          "text": "{\"id\":\"evt_a1b2c3d4e5f60009\",\"ts\":\"2026-08-26T10:00:00.000Z\",\"session_id\":null,\"type\":\"reflection\",\"provenance\":\"model_inferred\",\"importance\":0.6,\"valid_from\":\"2026-08-26T10:00:00.000Z\",\"valid_to\":null,\"content\":{\"context\":\"install-dsh failed on EFS-encrypted C:\\\\Users\\\\owner\",\"error\":\"CopyFileEx returned EFS error 1314 (missing privilege)\",\"fix\":\"use raw file copy with decryption; check EFS before install\"},\"source\":{\"kind\":\"model\",\"ref\":\"model:reflection\",\"detail\":\"consolidation reflect stage\"},\"meta\":{\"model\":\"deepseek-chat\",\"tags\":[\"lesson\",\"windows\"]}}",
+          "before": [
+            "{\"id\":\"evt_a1b2c3d4e5f60007\",\"ts\":\"2026-08-25T09:00:00.000Z\",\"session_id\":\"ses_c3d4e5f6a7b80003\",\"type\":\"observation\",\"provenance\":\"tool_output\",\"importance\":0.8,\"valid_from\":\"2026-08-25T09:00:00.000Z\",\"valid_to\":null,\"content\":{\"text\":\"install-dsh failed on EFS-encrypted C:\\\\Users\\\\owner directory\",\"kind\":\"tool_result\"},\"source\":{\"kind\":\"tool\",\"ref\":\"tool:sandbox-test:efs-case\",\"detail\":\"error output captured\"},\"meta\":{\"tags\":[\"windows\",\"efs\",\"install\"]}}",
+            "{\"id\":\"evt_a1b2c3d4e5f60008\",\"ts\":\"2026-08-25T09:05:00.000Z\",\"session_id\":\"ses_c3d4e5f6a7b80003\",\"type\":\"tool_call\",\"provenance\":\"tool_output\",\"importance\":0.5,\"valid_from\":\"2026-08-25T09:05:00.000Z\",\"valid_to\":null,\"content\":{\"tool\":\"search_memory\",\"args\":{\"query\":\"efs\"},\"ok\":true},\"source\":{\"kind\":\"tool\",\"ref\":\"tool:search_memory\",\"detail\":\"\"},\"meta\":{}}"
+          ],
+          "after": [
+            "{\"id\":\"evt_a1b2c3d4e5f60010\",\"ts\":\"2026-08-27T00:00:00.000Z\",\"session_id\":null,\"type\":\"candidate\",\"provenance\":\"model_inferred\",\"importance\":0.6,\"valid_from\":\"2026-08-27T00:00:00.000Z\",\"valid_to\":null,\"content\":{\"tier\":\"L3\",\"text\":\"owner prefers tea over coffee\",\"supporting_ids\":[\"evt_a1b2c3d4e5f60018\",\"evt_a1b2c3d4e5f60019\"]},\"source\":{\"kind\":\"model\",\"ref\":\"model:candidate\",\"detail\":\"N=2 cluster\"},\"meta\":{\"model\":\"deepseek-chat\"}}",
+            "{\"id\":\"evt_a1b2c3d4e5f60011\",\"ts\":\"2026-08-27T00:30:00.000Z\",\"session_id\":null,\"type\":\"candidate\",\"provenance\":\"model_inferred\",\"importance\":0.7,\"valid_from\":\"2026-08-27T00:30:00.000Z\",\"valid_to\":null,\"content\":{\"tier\":\"L3\",\"text\":\"owner uses vietnamese for chat\",\"supporting_ids\":[\"evt_a1b2c3d4e5f60002\",\"evt_a1b2c3d4e5f60013\",\"evt_a1b2c3d4e5f60014\"]},\"source\":{\"kind\":\"model\",\"ref\":\"model:candidate\",\"detail\":\"N=3 cluster\"},\"meta\":{\"model\":\"deepseek-chat\"}}"
+          ]
+        },
+        {
+          "file": "memory/sessions-20260801.jsonl",
+          "line": 2,
+          "text": "{\"id\":\"evt_f6a7b8c9d0e10029\",\"ts\":\"2026-07-20T09:00:00.000Z\",\"session_id\":\"ses_f6a7b8c9d0e10006\",\"type\":\"observation\",\"provenance\":\"tool_output\",\"importance\":0.6,\"valid_from\":\"2026-07-20T09:00:00.000Z\",\"valid_to\":null,\"content\":{\"text\":\"EFS detected on C drive\",\"kind\":\"tool_result\"},\"source\":{\"kind\":\"tool\",\"ref\":\"tool:fs-scan:c-drive\",\"detail\":\"scan output\"},\"meta\":{\"tags\":[\"efs\",\"windows\"]}}",
+          "before": [
+            "{\"id\":\"evt_f6a7b8c9d0e10028\",\"ts\":\"2026-07-15T08:00:00.000Z\",\"session_id\":\"ses_f6a7b8c9d0e10006\",\"type\":\"observation\",\"provenance\":\"user_stated\",\"importance\":0.7,\"valid_from\":\"2026-07-15T08:00:00.000Z\",\"valid_to\":null,\"content\":{\"text\":\"owner uses Windows 11 laptop\",\"kind\":\"fact\"},\"source\":{\"kind\":\"user\",\"ref\":\"telegram:chat:12345\",\"detail\":\"owner message\"},\"meta\":{\"tags\":[\"windows\",\"hardware\"]}}"
+          ],
+          "after": [
+            "{\"id\":\"evt_f6a7b8c9d0e10030\",\"ts\":\"2026-07-21T10:00:00.000Z\",\"session_id\":\"ses_f6a7b8c9d0e10006\",\"type\":\"session_end\",\"provenance\":\"tool_output\",\"importance\":0.5,\"valid_from\":\"2026-07-21T10:00:00.000Z\",\"valid_to\":null,\"content\":{\"reason\":\"user\",\"duration_s\":1200},\"source\":{\"kind\":\"bridge\",\"ref\":\"bridge:telegram:end\",\"detail\":\"\"},\"meta\":{}}",
+            "{\"id\":\"evt_f6a7b8c9d0e10031\",\"ts\":\"2026-08-01T08:00:00.000Z\",\"session_id\":\"ses_f6a7b8c9d0e10007\",\"type\":\"observation\",\"provenance\":\"user_stated\",\"importance\":0.5,\"valid_from\":\"2026-08-01T08:00:00.000Z\",\"valid_to\":null,\"content\":{\"text\":\"owner lives in Hanoi\",\"kind\":\"fact\"},\"source\":{\"kind\":\"user\",\"ref\":\"telegram:chat:12345\",\"detail\":\"owner message\"},\"meta\":{\"tags\":[\"location\"]}}"
+          ]
+        },
+        {
+          "file": "memory/core.md",
+          "line": 40,
+          "text": "## fact_0003: Laptop uses EFS for user profile",
+          "before": [
+            "",
+            "<!-- fact_0003 -->"
+          ],
+          "after": [
+            "",
+            "- **statement:** On the owner's laptop, C:\\Users\\owner uses EFS encryption."
+          ]
+        },
+        {
+          "file": "memory/core.md",
+          "line": 42,
+          "text": "- **statement:** On the owner's laptop, C:\\Users\\owner uses EFS encryption.",
+          "before": [
+            "## fact_0003: Laptop uses EFS for user profile",
+            ""
+          ],
+          "after": [
+            "- **provenance:** tool_output",
+            "- **importance:** 0.8"
+          ]
+        },
+        {
+          "file": "memory/core.md",
+          "line": 55,
+          "text": "## fact_0004: Install script must handle EFS",
+          "before": [
+            "",
+            "<!-- fact_0004 -->"
+          ],
+          "after": [
+            "",
+            "- **statement:** The install-dsh script must copy files with decrypted content on EFS-encrypted directories."
+          ]
+        },
+        {
+          "file": "memory/core.md",
+          "line": 57,
+          "text": "- **statement:** The install-dsh script must copy files with decrypted content on EFS-encrypted directories.",
+          "before": [
+            "## fact_0004: Install script must handle EFS",
+            ""
+          ],
+          "after": [
+            "- **provenance:** tool_output",
+            "- **importance:** 0.8"
+          ]
+        }
+      ]
+    },
+    "vietnamese": {
+      "params": {
+        "pattern": "vietnamese",
+        "files": "memory",
+        "context_lines": 1,
+        "limit": 10
+      },
+      "expected": [
+        {
+          "file": "memory/sessions.jsonl",
+          "line": 2,
+          "text": "{\"id\":\"evt_a1b2c3d4e5f60002\",\"ts\":\"2026-09-01T00:00:00.000Z\",\"session_id\":\"ses_a1b2c3d4e5f60001\",\"type\":\"observation\",\"provenance\":\"user_stated\",\"importance\":0.9,\"valid_from\":\"2026-09-01T00:00:00.000Z\",\"valid_to\":null,\"content\":{\"text\":\"the user prefers vietnamese for chat messages\",\"kind\":\"preference\"},\"source\":{\"kind\":\"user\",\"ref\":\"telegram:chat:12345\",\"detail\":\"owner message\"},\"meta\":{\"tags\":[\"preference\",\"language\"]}}",
+          "before": [
+            "{\"id\":\"evt_a1b2c3d4e5f60001\",\"ts\":\"2026-08-31T08:00:00.000Z\",\"session_id\":\"ses_a1b2c3d4e5f60001\",\"type\":\"session_start\",\"provenance\":\"tool_output\",\"importance\":0.5,\"valid_from\":\"2026-08-31T08:00:00.000Z\",\"valid_to\":null,\"content\":{\"channel\":\"telegram\",\"summary\":\"morning session\"},\"source\":{\"kind\":\"bridge\",\"ref\":\"bridge:telegram:start\",\"detail\":\"\"},\"meta\":{\"tags\":[\"session\"]}}"
+          ],
+          "after": [
+            "{\"id\":\"evt_a1b2c3d4e5f60003\",\"ts\":\"2026-08-02T00:00:00.000Z\",\"session_id\":\"ses_b2c3d4e5f6a70002\",\"type\":\"observation\",\"provenance\":\"user_stated\",\"importance\":0.7,\"valid_from\":\"2026-08-02T00:00:00.000Z\",\"valid_to\":null,\"content\":{\"text\":\"user prefers vietnamese for chat\",\"kind\":\"preference\"},\"source\":{\"kind\":\"user\",\"ref\":\"telegram:chat:12345\",\"detail\":\"owner message\"},\"meta\":{\"tags\":[\"preference\",\"language\"]}}"
+          ]
+        },
+        {
+          "file": "memory/sessions.jsonl",
+          "line": 3,
+          "text": "{\"id\":\"evt_a1b2c3d4e5f60003\",\"ts\":\"2026-08-02T00:00:00.000Z\",\"session_id\":\"ses_b2c3d4e5f6a70002\",\"type\":\"observation\",\"provenance\":\"user_stated\",\"importance\":0.7,\"valid_from\":\"2026-08-02T00:00:00.000Z\",\"valid_to\":null,\"content\":{\"text\":\"user prefers vietnamese for chat\",\"kind\":\"preference\"},\"source\":{\"kind\":\"user\",\"ref\":\"telegram:chat:12345\",\"detail\":\"owner message\"},\"meta\":{\"tags\":[\"preference\",\"language\"]}}",
+          "before": [
+            "{\"id\":\"evt_a1b2c3d4e5f60002\",\"ts\":\"2026-09-01T00:00:00.000Z\",\"session_id\":\"ses_a1b2c3d4e5f60001\",\"type\":\"observation\",\"provenance\":\"user_stated\",\"importance\":0.9,\"valid_from\":\"2026-09-01T00:00:00.000Z\",\"valid_to\":null,\"content\":{\"text\":\"the user prefers vietnamese for chat messages\",\"kind\":\"preference\"},\"source\":{\"kind\":\"user\",\"ref\":\"telegram:chat:12345\",\"detail\":\"owner message\"},\"meta\":{\"tags\":[\"preference\",\"language\"]}}"
+          ],
+          "after": [
+            "{\"id\":\"evt_a1b2c3d4e5f60004\",\"ts\":\"2026-07-03T00:00:00.000Z\",\"session_id\":\"ses_b2c3d4e5f6a70002\",\"type\":\"observation\",\"provenance\":\"user_stated\",\"importance\":0.8,\"valid_from\":\"2026-07-03T00:00:00.000Z\",\"valid_to\":null,\"content\":{\"text\":\"owner speaks english only\",\"kind\":\"fact\"},\"source\":{\"kind\":\"user\",\"ref\":\"telegram:chat:12345\",\"detail\":\"owner message\"},\"meta\":{\"tags\":[\"language\"]}}"
+          ]
+        },
+        {
+          "file": "memory/sessions.jsonl",
+          "line": 5,
+          "text": "{\"id\":\"evt_a1b2c3d4e5f60005\",\"ts\":\"2026-08-31T00:00:00.000Z\",\"session_id\":\"ses_a1b2c3d4e5f60001\",\"type\":\"observation\",\"provenance\":\"model_inferred\",\"importance\":0.5,\"valid_from\":\"2026-08-31T00:00:00.000Z\",\"valid_to\":null,\"content\":{\"text\":\"vietnamese food delivery app preferences\",\"kind\":\"model_statement\"},\"source\":{\"kind\":\"model\",\"ref\":\"model:reflection\",\"detail\":\"inferred during session\"},\"meta\":{\"model\":\"deepseek-chat\",\"tags\":[\"preference\"]}}",
+          "before": [
+            "{\"id\":\"evt_a1b2c3d4e5f60004\",\"ts\":\"2026-07-03T00:00:00.000Z\",\"session_id\":\"ses_b2c3d4e5f6a70002\",\"type\":\"observation\",\"provenance\":\"user_stated\",\"importance\":0.8,\"valid_from\":\"2026-07-03T00:00:00.000Z\",\"valid_to\":null,\"content\":{\"text\":\"owner speaks english only\",\"kind\":\"fact\"},\"source\":{\"kind\":\"user\",\"ref\":\"telegram:chat:12345\",\"detail\":\"owner message\"},\"meta\":{\"tags\":[\"language\"]}}"
+          ],
+          "after": [
+            "{\"id\":\"evt_a1b2c3d4e5f60006\",\"ts\":\"2026-06-03T00:00:00.000Z\",\"session_id\":\"ses_b2c3d4e5f6a70002\",\"type\":\"observation\",\"provenance\":\"user_stated\",\"importance\":0.6,\"valid_from\":\"2026-06-03T00:00:00.000Z\",\"valid_to\":\"2026-08-22T00:00:00.000Z\",\"content\":{\"text\":\"user prefers vietnamese for chat messages\",\"kind\":\"preference\"},\"source\":{\"kind\":\"user\",\"ref\":\"telegram:chat:12345\",\"detail\":\"superseded preference\"},\"meta\":{\"tags\":[\"preference\",\"language\"]}}"
+          ]
+        },
+        {
+          "file": "memory/sessions.jsonl",
+          "line": 6,
+          "text": "{\"id\":\"evt_a1b2c3d4e5f60006\",\"ts\":\"2026-06-03T00:00:00.000Z\",\"session_id\":\"ses_b2c3d4e5f6a70002\",\"type\":\"observation\",\"provenance\":\"user_stated\",\"importance\":0.6,\"valid_from\":\"2026-06-03T00:00:00.000Z\",\"valid_to\":\"2026-08-22T00:00:00.000Z\",\"content\":{\"text\":\"user prefers vietnamese for chat messages\",\"kind\":\"preference\"},\"source\":{\"kind\":\"user\",\"ref\":\"telegram:chat:12345\",\"detail\":\"superseded preference\"},\"meta\":{\"tags\":[\"preference\",\"language\"]}}",
+          "before": [
+            "{\"id\":\"evt_a1b2c3d4e5f60005\",\"ts\":\"2026-08-31T00:00:00.000Z\",\"session_id\":\"ses_a1b2c3d4e5f60001\",\"type\":\"observation\",\"provenance\":\"model_inferred\",\"importance\":0.5,\"valid_from\":\"2026-08-31T00:00:00.000Z\",\"valid_to\":null,\"content\":{\"text\":\"vietnamese food delivery app preferences\",\"kind\":\"model_statement\"},\"source\":{\"kind\":\"model\",\"ref\":\"model:reflection\",\"detail\":\"inferred during session\"},\"meta\":{\"model\":\"deepseek-chat\",\"tags\":[\"preference\"]}}"
+          ],
+          "after": [
+            "{\"id\":\"evt_a1b2c3d4e5f60007\",\"ts\":\"2026-08-25T09:00:00.000Z\",\"session_id\":\"ses_c3d4e5f6a7b80003\",\"type\":\"observation\",\"provenance\":\"tool_output\",\"importance\":0.8,\"valid_from\":\"2026-08-25T09:00:00.000Z\",\"valid_to\":null,\"content\":{\"text\":\"install-dsh failed on EFS-encrypted C:\\\\Users\\\\owner directory\",\"kind\":\"tool_result\"},\"source\":{\"kind\":\"tool\",\"ref\":\"tool:sandbox-test:efs-case\",\"detail\":\"error output captured\"},\"meta\":{\"tags\":[\"windows\",\"efs\",\"install\"]}}"
+          ]
+        },
+        {
+          "file": "memory/sessions.jsonl",
+          "line": 11,
+          "text": "{\"id\":\"evt_a1b2c3d4e5f60011\",\"ts\":\"2026-08-27T00:30:00.000Z\",\"session_id\":null,\"type\":\"candidate\",\"provenance\":\"model_inferred\",\"importance\":0.7,\"valid_from\":\"2026-08-27T00:30:00.000Z\",\"valid_to\":null,\"content\":{\"tier\":\"L3\",\"text\":\"owner uses vietnamese for chat\",\"supporting_ids\":[\"evt_a1b2c3d4e5f60002\",\"evt_a1b2c3d4e5f60013\",\"evt_a1b2c3d4e5f60014\"]},\"source\":{\"kind\":\"model\",\"ref\":\"model:candidate\",\"detail\":\"N=3 cluster\"},\"meta\":{\"model\":\"deepseek-chat\"}}",
+          "before": [
+            "{\"id\":\"evt_a1b2c3d4e5f60010\",\"ts\":\"2026-08-27T00:00:00.000Z\",\"session_id\":null,\"type\":\"candidate\",\"provenance\":\"model_inferred\",\"importance\":0.6,\"valid_from\":\"2026-08-27T00:00:00.000Z\",\"valid_to\":null,\"content\":{\"tier\":\"L3\",\"text\":\"owner prefers tea over coffee\",\"supporting_ids\":[\"evt_a1b2c3d4e5f60018\",\"evt_a1b2c3d4e5f60019\"]},\"source\":{\"kind\":\"model\",\"ref\":\"model:candidate\",\"detail\":\"N=2 cluster\"},\"meta\":{\"model\":\"deepseek-chat\"}}"
+          ],
+          "after": [
+            "{\"id\":\"evt_a1b2c3d4e5f60012\",\"ts\":\"2026-08-27T01:00:00.000Z\",\"session_id\":null,\"type\":\"candidate\",\"provenance\":\"model_inferred\",\"importance\":0.7,\"valid_from\":\"2026-08-27T01:00:00.000Z\",\"valid_to\":null,\"content\":{\"tier\":\"L3\",\"text\":\"owner uses vietnamese for chat\",\"supporting_ids\":[\"evt_a1b2c3d4e5f60002\",\"evt_a1b2c3d4e5f60013\",\"evt_a1b2c3d4e5f60014\",\"evt_a1b2c3d4e5f60015\",\"evt_a1b2c3d4e5f60016\"]},\"source\":{\"kind\":\"model\",\"ref\":\"model:candidate\",\"detail\":\"N=5 cluster\"},\"meta\":{\"model\":\"deepseek-chat\"}}"
+          ]
+        },
+        {
+          "file": "memory/sessions.jsonl",
+          "line": 12,
+          "text": "{\"id\":\"evt_a1b2c3d4e5f60012\",\"ts\":\"2026-08-27T01:00:00.000Z\",\"session_id\":null,\"type\":\"candidate\",\"provenance\":\"model_inferred\",\"importance\":0.7,\"valid_from\":\"2026-08-27T01:00:00.000Z\",\"valid_to\":null,\"content\":{\"tier\":\"L3\",\"text\":\"owner uses vietnamese for chat\",\"supporting_ids\":[\"evt_a1b2c3d4e5f60002\",\"evt_a1b2c3d4e5f60013\",\"evt_a1b2c3d4e5f60014\",\"evt_a1b2c3d4e5f60015\",\"evt_a1b2c3d4e5f60016\"]},\"source\":{\"kind\":\"model\",\"ref\":\"model:candidate\",\"detail\":\"N=5 cluster\"},\"meta\":{\"model\":\"deepseek-chat\"}}",
+          "before": [
+            "{\"id\":\"evt_a1b2c3d4e5f60011\",\"ts\":\"2026-08-27T00:30:00.000Z\",\"session_id\":null,\"type\":\"candidate\",\"provenance\":\"model_inferred\",\"importance\":0.7,\"valid_from\":\"2026-08-27T00:30:00.000Z\",\"valid_to\":null,\"content\":{\"tier\":\"L3\",\"text\":\"owner uses vietnamese for chat\",\"supporting_ids\":[\"evt_a1b2c3d4e5f60002\",\"evt_a1b2c3d4e5f60013\",\"evt_a1b2c3d4e5f60014\"]},\"source\":{\"kind\":\"model\",\"ref\":\"model:candidate\",\"detail\":\"N=3 cluster\"},\"meta\":{\"model\":\"deepseek-chat\"}}"
+          ],
+          "after": [
+            "{\"id\":\"evt_a1b2c3d4e5f60013\",\"ts\":\"2026-08-20T08:00:00.000Z\",\"session_id\":\"ses_d4e5f6a7b8c90004\",\"type\":\"observation\",\"provenance\":\"tool_output\",\"importance\":0.6,\"valid_from\":\"2026-08-20T08:00:00.000Z\",\"valid_to\":null,\"content\":{\"text\":\"owner uses vietnamese chat messages daily\",\"kind\":\"tool_result\"},\"source\":{\"kind\":\"tool\",\"ref\":\"tool:telegram:translation\",\"detail\":\"translated message\"},\"meta\":{\"tags\":[\"language\"]}}"
+          ]
+        },
+        {
+          "file": "memory/sessions.jsonl",
+          "line": 13,
+          "text": "{\"id\":\"evt_a1b2c3d4e5f60013\",\"ts\":\"2026-08-20T08:00:00.000Z\",\"session_id\":\"ses_d4e5f6a7b8c90004\",\"type\":\"observation\",\"provenance\":\"tool_output\",\"importance\":0.6,\"valid_from\":\"2026-08-20T08:00:00.000Z\",\"valid_to\":null,\"content\":{\"text\":\"owner uses vietnamese chat messages daily\",\"kind\":\"tool_result\"},\"source\":{\"kind\":\"tool\",\"ref\":\"tool:telegram:translation\",\"detail\":\"translated message\"},\"meta\":{\"tags\":[\"language\"]}}",
+          "before": [
+            "{\"id\":\"evt_a1b2c3d4e5f60012\",\"ts\":\"2026-08-27T01:00:00.000Z\",\"session_id\":null,\"type\":\"candidate\",\"provenance\":\"model_inferred\",\"importance\":0.7,\"valid_from\":\"2026-08-27T01:00:00.000Z\",\"valid_to\":null,\"content\":{\"tier\":\"L3\",\"text\":\"owner uses vietnamese for chat\",\"supporting_ids\":[\"evt_a1b2c3d4e5f60002\",\"evt_a1b2c3d4e5f60013\",\"evt_a1b2c3d4e5f60014\",\"evt_a1b2c3d4e5f60015\",\"evt_a1b2c3d4e5f60016\"]},\"source\":{\"kind\":\"model\",\"ref\":\"model:candidate\",\"detail\":\"N=5 cluster\"},\"meta\":{\"model\":\"deepseek-chat\"}}"
+          ],
+          "after": [
+            "{\"id\":\"evt_a1b2c3d4e5f60014\",\"ts\":\"2026-08-21T09:00:00.000Z\",\"session_id\":\"ses_d4e5f6a7b8c90004\",\"type\":\"observation\",\"provenance\":\"user_stated\",\"importance\":0.7,\"valid_from\":\"2026-08-21T09:00:00.000Z\",\"valid_to\":null,\"content\":{\"text\":\"owner writes in vietnamese\",\"kind\":\"preference\"},\"source\":{\"kind\":\"user\",\"ref\":\"telegram:chat:12345\",\"detail\":\"owner message\"},\"meta\":{\"tags\":[\"language\"]}}"
+          ]
+        },
+        {
+          "file": "memory/sessions.jsonl",
+          "line": 14,
+          "text": "{\"id\":\"evt_a1b2c3d4e5f60014\",\"ts\":\"2026-08-21T09:00:00.000Z\",\"session_id\":\"ses_d4e5f6a7b8c90004\",\"type\":\"observation\",\"provenance\":\"user_stated\",\"importance\":0.7,\"valid_from\":\"2026-08-21T09:00:00.000Z\",\"valid_to\":null,\"content\":{\"text\":\"owner writes in vietnamese\",\"kind\":\"preference\"},\"source\":{\"kind\":\"user\",\"ref\":\"telegram:chat:12345\",\"detail\":\"owner message\"},\"meta\":{\"tags\":[\"language\"]}}",
+          "before": [
+            "{\"id\":\"evt_a1b2c3d4e5f60013\",\"ts\":\"2026-08-20T08:00:00.000Z\",\"session_id\":\"ses_d4e5f6a7b8c90004\",\"type\":\"observation\",\"provenance\":\"tool_output\",\"importance\":0.6,\"valid_from\":\"2026-08-20T08:00:00.000Z\",\"valid_to\":null,\"content\":{\"text\":\"owner uses vietnamese chat messages daily\",\"kind\":\"tool_result\"},\"source\":{\"kind\":\"tool\",\"ref\":\"tool:telegram:translation\",\"detail\":\"translated message\"},\"meta\":{\"tags\":[\"language\"]}}"
+          ],
+          "after": [
+            "{\"id\":\"evt_a1b2c3d4e5f60015\",\"ts\":\"2026-08-22T09:30:00.000Z\",\"session_id\":\"ses_d4e5f6a7b8c90004\",\"type\":\"observation\",\"provenance\":\"user_stated\",\"importance\":0.6,\"valid_from\":\"2026-08-22T09:30:00.000Z\",\"valid_to\":null,\"content\":{\"text\":\"owner prefers vietnamese\",\"kind\":\"preference\"},\"source\":{\"kind\":\"user\",\"ref\":\"telegram:chat:12345\",\"detail\":\"owner message\"},\"meta\":{\"tags\":[\"language\"]}}"
+          ]
+        },
+        {
+          "file": "memory/sessions.jsonl",
+          "line": 15,
+          "text": "{\"id\":\"evt_a1b2c3d4e5f60015\",\"ts\":\"2026-08-22T09:30:00.000Z\",\"session_id\":\"ses_d4e5f6a7b8c90004\",\"type\":\"observation\",\"provenance\":\"user_stated\",\"importance\":0.6,\"valid_from\":\"2026-08-22T09:30:00.000Z\",\"valid_to\":null,\"content\":{\"text\":\"owner prefers vietnamese\",\"kind\":\"preference\"},\"source\":{\"kind\":\"user\",\"ref\":\"telegram:chat:12345\",\"detail\":\"owner message\"},\"meta\":{\"tags\":[\"language\"]}}",
+          "before": [
+            "{\"id\":\"evt_a1b2c3d4e5f60014\",\"ts\":\"2026-08-21T09:00:00.000Z\",\"session_id\":\"ses_d4e5f6a7b8c90004\",\"type\":\"observation\",\"provenance\":\"user_stated\",\"importance\":0.7,\"valid_from\":\"2026-08-21T09:00:00.000Z\",\"valid_to\":null,\"content\":{\"text\":\"owner writes in vietnamese\",\"kind\":\"preference\"},\"source\":{\"kind\":\"user\",\"ref\":\"telegram:chat:12345\",\"detail\":\"owner message\"},\"meta\":{\"tags\":[\"language\"]}}"
+          ],
+          "after": [
+            "{\"id\":\"evt_a1b2c3d4e5f60016\",\"ts\":\"2026-08-23T10:00:00.000Z\",\"session_id\":\"ses_d4e5f6a7b8c90004\",\"type\":\"observation\",\"provenance\":\"tool_output\",\"importance\":0.5,\"valid_from\":\"2026-08-23T10:00:00.000Z\",\"valid_to\":null,\"content\":{\"text\":\"translated chat shows vietnamese\",\"kind\":\"tool_result\"},\"source\":{\"kind\":\"tool\",\"ref\":\"tool:telegram:translation\",\"detail\":\"translated message\"},\"meta\":{\"tags\":[\"language\"]}}"
+          ]
+        },
+        {
+          "file": "memory/sessions.jsonl",
+          "line": 16,
+          "text": "{\"id\":\"evt_a1b2c3d4e5f60016\",\"ts\":\"2026-08-23T10:00:00.000Z\",\"session_id\":\"ses_d4e5f6a7b8c90004\",\"type\":\"observation\",\"provenance\":\"tool_output\",\"importance\":0.5,\"valid_from\":\"2026-08-23T10:00:00.000Z\",\"valid_to\":null,\"content\":{\"text\":\"translated chat shows vietnamese\",\"kind\":\"tool_result\"},\"source\":{\"kind\":\"tool\",\"ref\":\"tool:telegram:translation\",\"detail\":\"translated message\"},\"meta\":{\"tags\":[\"language\"]}}",
+          "before": [
+            "{\"id\":\"evt_a1b2c3d4e5f60015\",\"ts\":\"2026-08-22T09:30:00.000Z\",\"session_id\":\"ses_d4e5f6a7b8c90004\",\"type\":\"observation\",\"provenance\":\"user_stated\",\"importance\":0.6,\"valid_from\":\"2026-08-22T09:30:00.000Z\",\"valid_to\":null,\"content\":{\"text\":\"owner prefers vietnamese\",\"kind\":\"preference\"},\"source\":{\"kind\":\"user\",\"ref\":\"telegram:chat:12345\",\"detail\":\"owner message\"},\"meta\":{\"tags\":[\"language\"]}}"
+          ],
+          "after": [
+            "{\"id\":\"evt_a1b2c3d4e5f60017\",\"ts\":\"2026-08-28T00:00:00.000Z\",\"session_id\":null,\"type\":\"graduation\",\"provenance\":\"tool_output\",\"importance\":0.5,\"valid_from\":\"2026-08-28T00:00:00.000Z\",\"valid_to\":null,\"content\":{\"tier\":\"L3\",\"fact_id\":\"fact_0001\",\"judge\":\"deepseek\",\"verdict\":\"approve\"},\"source\":{\"kind\":\"model\",\"ref\":\"model:judge\",\"detail\":\"judge gate output\"},\"meta\":{\"model\":\"deepseek\"}}"
+          ]
+        }
+      ]
+    },
+    "limitCap": {
+      "params": {
+        "pattern": "evt_",
+        "files": "memory",
+        "context_lines": 0,
+        "limit": 5
+      },
+      "expected": [
+        {
+          "file": "memory/sessions.jsonl",
+          "line": 1,
+          "text": "{\"id\":\"evt_a1b2c3d4e5f60001\",\"ts\":\"2026-08-31T08:00:00.000Z\",\"session_id\":\"ses_a1b2c3d4e5f60001\",\"type\":\"session_start\",\"provenance\":\"tool_output\",\"importance\":0.5,\"valid_from\":\"2026-08-31T08:00:00.000Z\",\"valid_to\":null,\"content\":{\"channel\":\"telegram\",\"summary\":\"morning session\"},\"source\":{\"kind\":\"bridge\",\"ref\":\"bridge:telegram:start\",\"detail\":\"\"},\"meta\":{\"tags\":[\"session\"]}}",
+          "before": [],
+          "after": []
+        },
+        {
+          "file": "memory/sessions.jsonl",
+          "line": 2,
+          "text": "{\"id\":\"evt_a1b2c3d4e5f60002\",\"ts\":\"2026-09-01T00:00:00.000Z\",\"session_id\":\"ses_a1b2c3d4e5f60001\",\"type\":\"observation\",\"provenance\":\"user_stated\",\"importance\":0.9,\"valid_from\":\"2026-09-01T00:00:00.000Z\",\"valid_to\":null,\"content\":{\"text\":\"the user prefers vietnamese for chat messages\",\"kind\":\"preference\"},\"source\":{\"kind\":\"user\",\"ref\":\"telegram:chat:12345\",\"detail\":\"owner message\"},\"meta\":{\"tags\":[\"preference\",\"language\"]}}",
+          "before": [],
+          "after": []
+        },
+        {
+          "file": "memory/sessions.jsonl",
+          "line": 3,
+          "text": "{\"id\":\"evt_a1b2c3d4e5f60003\",\"ts\":\"2026-08-02T00:00:00.000Z\",\"session_id\":\"ses_b2c3d4e5f6a70002\",\"type\":\"observation\",\"provenance\":\"user_stated\",\"importance\":0.7,\"valid_from\":\"2026-08-02T00:00:00.000Z\",\"valid_to\":null,\"content\":{\"text\":\"user prefers vietnamese for chat\",\"kind\":\"preference\"},\"source\":{\"kind\":\"user\",\"ref\":\"telegram:chat:12345\",\"detail\":\"owner message\"},\"meta\":{\"tags\":[\"preference\",\"language\"]}}",
+          "before": [],
+          "after": []
+        },
+        {
+          "file": "memory/sessions.jsonl",
+          "line": 4,
+          "text": "{\"id\":\"evt_a1b2c3d4e5f60004\",\"ts\":\"2026-07-03T00:00:00.000Z\",\"session_id\":\"ses_b2c3d4e5f6a70002\",\"type\":\"observation\",\"provenance\":\"user_stated\",\"importance\":0.8,\"valid_from\":\"2026-07-03T00:00:00.000Z\",\"valid_to\":null,\"content\":{\"text\":\"owner speaks english only\",\"kind\":\"fact\"},\"source\":{\"kind\":\"user\",\"ref\":\"telegram:chat:12345\",\"detail\":\"owner message\"},\"meta\":{\"tags\":[\"language\"]}}",
+          "before": [],
+          "after": []
+        },
+        {
+          "file": "memory/sessions.jsonl",
+          "line": 5,
+          "text": "{\"id\":\"evt_a1b2c3d4e5f60005\",\"ts\":\"2026-08-31T00:00:00.000Z\",\"session_id\":\"ses_a1b2c3d4e5f60001\",\"type\":\"observation\",\"provenance\":\"model_inferred\",\"importance\":0.5,\"valid_from\":\"2026-08-31T00:00:00.000Z\",\"valid_to\":null,\"content\":{\"text\":\"vietnamese food delivery app preferences\",\"kind\":\"model_statement\"},\"source\":{\"kind\":\"model\",\"ref\":\"model:reflection\",\"detail\":\"inferred during session\"},\"meta\":{\"model\":\"deepseek-chat\",\"tags\":[\"preference\"]}}",
+          "before": [],
+          "after": []
+        }
+      ]
+    },
+    "noMatch": {
+      "params": {
+        "pattern": "zzzz_nothing_here",
+        "files": "memory"
+      },
+      "expected": []
+    },
+    "invalidRegexError": {
+      "params": {
+        "pattern": "["
+      },
+      "expected": {
+        "error": "invalid regex"
+      }
+    },
+    "runsNotInFixtures": {
+      "params": {
+        "pattern": "x",
+        "files": "runs"
+      },
+      "note": "runs scope reads .agent-team/runs/*.log; fixtures ship no run logs — treated as no-match",
+      "expected": []
+    }
+  }
+}

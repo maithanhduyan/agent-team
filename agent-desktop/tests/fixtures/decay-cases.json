@@ -1,0 +1,53 @@
+{
+  "meta": {
+    "spec": "docs/memory-spec.md §10.4 (decay/anti-drift, Day-30), acceptance §13 row 15; ADR-007",
+    "note": "Input state = the core.md fixture facts with their `last_observed`. The Day-30 decay job: a fact not re-observed for MEMORY_DECAY_DAYS (30) has its importance HALVED (floor 0.1) and a `decay` record written (reason day30); a hot fact falling below MEMORY_HOT_IMPORTANCE (0.8) is demoted (`hot_demote`); after 2 decay cycles without re-observation (~60 days) status becomes `stale`; stale facts are excluded from hot injection and deprioritized in search. REF_NOW = 2026-09-01T00:00:00.000Z.",
+    "config": { "MEMORY_DECAY_DAYS": 30, "MEMORY_HOT_IMPORTANCE": 0.8, "stale_after_cycles": 2 }
+  },
+  "cases": [
+    {
+      "id": "d1-decay-twice-stale",
+      "fact_id": "fact_0005",
+      "last_observed": "2026-07-01T07:05:00.000Z",
+      "importance_before": 0.9,
+      "age_days_at_ref_now": 62,
+      "cycles_elapsed": 2,
+      "expected": {
+        "decay_records": 2,
+        "reason": "day30",
+        "importance_after": 0.225,
+        "status": "stale",
+        "hot_demoted": true,
+        "excluded_from_hot_injection": true
+      }
+    },
+    {
+      "id": "d2-decay-once-active",
+      "fact_id": "fact_0006",
+      "last_observed": "2026-07-15T08:00:00.000Z",
+      "importance_before": 0.7,
+      "age_days_at_ref_now": 48,
+      "cycles_elapsed": 1,
+      "expected": {
+        "decay_records": 1,
+        "reason": "day30",
+        "importance_after": 0.35,
+        "status": "active",
+        "stale": false
+      }
+    },
+    {
+      "id": "d3-fresh-no-decay",
+      "fact_id": "fact_0001",
+      "last_observed": "2026-08-31T12:00:00.000Z",
+      "importance_before": 0.9,
+      "age_days_at_ref_now": 0,
+      "cycles_elapsed": 0,
+      "expected": {
+        "decay_records": 0,
+        "importance_after": 0.9,
+        "status": "active"
+      }
+    }
+  ]
+}

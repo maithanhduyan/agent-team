@@ -1,0 +1,29 @@
+{
+  "meta": {
+    "spec": "docs/memory-spec.md §9.3 (verdict contract), acceptance §13 row 11",
+    "note": "A valid verdict parses as strict JSON with shape {verdict: approve|reject|revise, confidence: 0..1, reasons: [string] length>=1, suggested_edit: string|null (required when verdict==revise)}. Any violation counts as `error` for that model (R-JUDGE-4).",
+    "usage": "mock LLM provider returns `valid` verdicts verbatim and `malformed` payloads verbatim; the judge gate must accept the former and count the latter as per-model errors."
+  },
+  "valid": [
+    {
+      "name": "approve",
+      "payload": { "verdict": "approve", "confidence": 0.92, "reasons": ["grounded in 3 supporting observations", "no injection pattern detected"], "suggested_edit": null }
+    },
+    {
+      "name": "reject",
+      "payload": { "verdict": "reject", "confidence": 0.7, "reasons": ["conflicts with active fact fact_0009"], "suggested_edit": null }
+    },
+    {
+      "name": "revise-with-edit",
+      "payload": { "verdict": "revise", "confidence": 0.6, "reasons": ["statement over-generalizes"], "suggested_edit": "The owner's timezone is UTC+9 since 2026-08-29." }
+    }
+  ],
+  "malformed": [
+    { "name": "not-json", "payload": "this is not json {verdict: approve" },
+    { "name": "missing-verdict", "payload": { "confidence": 0.9, "reasons": ["x"] } },
+    { "name": "unknown-verdict", "payload": { "verdict": "maybe", "confidence": 0.9, "reasons": ["x"] } },
+    { "name": "confidence-out-of-range", "payload": { "verdict": "approve", "confidence": 1.5, "reasons": ["x"] } },
+    { "name": "empty-reasons", "payload": { "verdict": "approve", "confidence": 0.9, "reasons": [] } },
+    { "name": "revise-without-edit", "payload": { "verdict": "revise", "confidence": 0.6, "reasons": ["needs edit"], "suggested_edit": null } }
+  ]
+}
