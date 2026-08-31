@@ -152,6 +152,46 @@ test('parseCoreMd errors on a fact block missing a required key (§13, §6.2)', 
     assert.throws(() => parseCoreMd(content), FactBlockError);
 });
 
+test('parseCoreMd errors on a malformed fact id (fact_b0001 — not fact_<n>) — §4.2/§6.2', () => {
+    const content = [
+        '---',
+        'memory_version: 1',
+        'updated: 2026-09-01T12:34:56.789Z',
+        'count: 1',
+        '---',
+        '',
+        '# Core Memory',
+        '',
+        '<!-- fact_b0001 -->',
+        '## fact_b0001: Wrong-format id',
+        '',
+        '- **statement:** id format must be fact_<n>, but the block otherwise has every key',
+        '- **provenance:** user_stated',
+        '- **importance:** 0.9',
+        '- **hot:** true',
+        '- **valid_from:** 2026-08-01T08:00:00.000Z',
+        '- **valid_to:**',
+        '- **source:** telegram:chat:12345',
+        '- **supporting_observations:** evt_a1b2c3d4e5f60002',
+        '- **observation_count:** 3',
+        '- **last_observed:** 2026-08-31T12:00:00.000Z',
+        '- **status:** active',
+        '',
+    ].join('\n');
+    // Never a silent skip: the malformed id must raise, not parse to 0 facts.
+    assert.throws(() => parseCoreMd(content), FactBlockError);
+    assert.throws(() => parseCoreMd(content), /invalid fact id "fact_b0001"/);
+});
+
+test('parseCoreMd errors on the T06 core-broken.md fixture (id fact_b0001) — §13 row 4', async () => {
+    const fixture = new URL('../tests/fixtures/memory/core-broken.md', import.meta.url);
+    const content = await readFile(fixture, 'utf8');
+    // The broken fixture (id `fact_b0001`, missing required key) must raise
+    // a parse error — the file must never parse to 0 facts with no error.
+    assert.throws(() => parseCoreMd(content), FactBlockError);
+    assert.throws(() => parseCoreMd(content), /fact_b0001/);
+});
+
 test('supersedeFact sets valid_to + status superseded and appends a new block (R-CORE-3)', async (t) => {
     const { dir, writer } = await makeWriter();
     t.after(() => rm(dir, { recursive: true, force: true }));

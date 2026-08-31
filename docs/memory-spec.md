@@ -386,7 +386,7 @@ search_memory(
   min_score: float = 0.1,                     // 0..1
   include_expired: bool = false,              // include valid_to <= now
   provenance: ("user_stated"|"model_inferred"|"tool_output")[] | null,  // filter
-  since: "ISO8601" | null,                    // ts lower bound
+  since: "ISO8601" | null,                    // recency-anchor lower bound
   session_id: string | null                   // restrict to one session
 ) -> {
   results: [{
@@ -399,6 +399,11 @@ search_memory(
   meta: { took_ms, hits, query }
 }
 ```
+
+`ts` in a result is the record's **recency anchor** — `record.ts` for
+L2 records, the fact block's **`last_observed`** for L3 facts
+(ADR-005 addendum, Redmine #40). The `since` filter and the score
+tie-break apply to the same anchor.
 
 **Retrieval score (the contract formula):**
 
@@ -416,8 +421,14 @@ configurable via env `MEMORY_ALPHA/BETA/GAMMA` (validated to sum to 1).
   tokens — implementer picks, must be deterministic and unit-testable).
   If an embedding provider is later added (out of scope v0.4), it slots
   in here.
-- **recency ∈ [0,1]:** exponential or half-life decay on `record.ts`.
-  Contract default: `recency = exp(-ln(2) · age_days / HALF_LIFE)` with
+- **recency ∈ [0,1]:** exponential or half-life decay on the record's
+  **recency anchor** — `record.ts` for L2 records, the fact block's
+  **`last_observed`** for L3 facts (ADR-005 addendum, Redmine #40).
+  Anchoring L3 on `last_observed` (the most recent supporting
+  observation) keeps `search_memory` consistent with the Day-30 decay
+  policy (§10.4), which also keys on `last_observed`; `valid_from` is
+  the validity-window start (§5.4), not a recency signal. Contract
+  default: `recency = exp(-ln(2) · age_days / HALF_LIFE)` with
   `HALF_LIFE = 30` days (so a record 30 days old scores 0.5, 60 days
   old 0.25 — aligns with the Day-30 decay policy). Configurable via
   `MEMORY_RECENCY_HALF_LIFE_DAYS`.
@@ -828,6 +839,7 @@ default `0600`/`0700` on the memory directory.
 | §6.2 | `core.md` parses to fact blocks; missing required key → parse error |
 | §6.3 | Hot facts (hot, active, importance ≥ 0.8, on the §10.4 Day-30 decay projection) are injected; count ≤ `MEMORY_HOT_MAX` |
 | §7.1 | Retrieval formula matches a hand-computed golden set (α·sim + β·recency + γ·importance) within 1e-6 |
+| §7.1 | Recency anchor: L2 = `record.ts`, L3 = fact `last_observed` (ADR-005 addendum) — golden set computed on the anchor |
 | §7.1 | `include_expired`/`provenance`/`since` filters behave as specified |
 | §7.2 | `grep_logs` returns exact lines + context; RE2 regex; limit cap honored |
 | §8.3 | Reflection output has `{context, error, fix}` shape |

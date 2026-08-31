@@ -580,6 +580,36 @@ the project architecture, or the product scope changes.
 - **Consequences:** T04 implements the tools; T06 pins the formula with
   golden-set tests; T21 (v0.5) renders search results/provenance.
 
+### ADR-005 addendum — L3 recency anchor is `last_observed`, not `valid_from` (Redmine #40)
+
+- **Status:** accepted (TASK-7438 / Redmine #40; T04 bugfix — pins the
+  §7.1 recency anchor per tier; no implementation change —
+  `search-memory.ts` already scores L3 on `last_observed`)
+- **Date:** 2026-09
+- **Context:** spec §7.1 said recency is "exponential or half-life
+  decay on `record.ts`" without disambiguating for L3. The T04
+  implementation (`search-memory.ts`, `l3Candidate`) uses the L3 fact
+  block's `last_observed` as the recency anchor (and as the result
+  `ts` and the `since` filter key), which is consistent with the §10.4
+  Day-30 decay policy — also keyed on `last_observed`. The T06 re-run
+  (Redmine #32) pinned L3 `ts = valid_from` instead (TESTING.md F5,
+  `generate-golden.mjs`), so facts whose `valid_from ≠ last_observed`
+  scored differently — measured mismatch up to **0.073** (e.g.
+  `fact_0001`: impl 0.522009 vs golden 0.448704 at REF_NOW).
+- **Decision (backend scope):** L3 recency uses the fact block's
+  **`last_observed`** as the anchor. `valid_from` remains the
+  validity-window start (§5.4) and is **not** a recency signal: it
+  would rank a fact created long ago but re-observed recently as old,
+  and a fact never re-observed as recent — diverging from the decay
+  policy. Spec §7.1 updated to state the anchor per tier (L2 =
+  `record.ts`, L3 = `last_observed`), including the result `ts`,
+  `since` filter, tie-break, and §13 acceptance mapping.
+- **Consequences:** no change to `search-memory.ts` (it already
+  conforms); T06 regenerates the golden set on the pinned anchor
+  (Redmine #41) — `generate-golden.mjs` switches L3 `ts` from
+  `valid_from` to `last_observed`; `agent-desktop/README.md` already
+  documents "L3 recency uses `last_observed`, L2 uses `ts`".
+
 ## ADR-004 — Memory data contract: `core.md` + `sessions.jsonl`
 
 - **Status:** accepted (TASK-6060 / Redmine #25; plan #22 T01, Q1)
