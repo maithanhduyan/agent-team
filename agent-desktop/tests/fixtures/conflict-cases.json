@@ -1,0 +1,52 @@
+{
+  "meta": {
+    "spec": "docs/memory-spec.md §10.3 (anti-conflict), §5.4 (validity window), acceptance §13 row 14; ADR-007, R-CORE-3, R-MEM-5",
+    "note": "When a new fact contradicts an ACTIVE fact, consolidation must NEVER overwrite in place: it sets valid_to=now + status:superseded on the old block, appends a new block with valid_from=now + status:active, and writes a `supersede` L2 record linking old->new. The judge gate sees the conflicting active facts and must approve the supersede. Input state is the core.md fixture (fact_0009 active 'timezone UTC+9').",
+    "ref_now": "2026-09-01T00:00:00.000Z"
+  },
+  "cases": [
+    {
+      "id": "c1-supersede-active-fact",
+      "case": "§10.3 — incoming fact contradicts active fact_0009",
+      "incoming": {
+        "tier": "L3",
+        "text": "The owner's timezone is UTC+11.",
+        "supporting_ids": ["evt_a1b2c3d4e5f60024", "evt_a1b2c3d4e5f60024", "evt_a1b2c3d4e5f60024"]
+      },
+      "conflicting_active": ["fact_0009"],
+      "judge": { "kind": "verdict", "name": "approve" },
+      "expected": {
+        "old_block": { "id": "fact_0009", "status": "superseded", "valid_to_set": true },
+        "new_block": { "status": "active", "valid_from_set": true, "statement_contains": "UTC+11" },
+        "supersede_record": { "type": "supersede", "old_id": "fact_0009", "new_id_matches_new_block": true },
+        "no_in_place_overwrite": true
+      }
+    },
+    {
+      "id": "c2-supersede-needs-judge",
+      "case": "§10.3 — judge rejects the supersede -> no change, rejection recorded",
+      "incoming": {
+        "tier": "L3",
+        "text": "The owner's timezone is UTC+11.",
+        "supporting_ids": ["evt_a1b2c3d4e5f60024", "evt_a1b2c3d4e5f60024", "evt_a1b2c3d4e5f60024"]
+      },
+      "conflicting_active": ["fact_0009"],
+      "judge": { "kind": "verdict", "name": "reject" },
+      "expected": {
+        "old_block_unchanged": true,
+        "no_new_block": true,
+        "rejection_record": { "type": "rejection" }
+      }
+    },
+    {
+      "id": "c3-consistency-retrieval",
+      "case": "§10.3 — retrieval surfaces only ACTIVE facts (one value per fact at any time)",
+      "note": "With core.md as input, 'timezone' queries must return fact_0009 (active, UTC+9) and NOT fact_0007 (superseded) by default; include_expired:true may surface superseded/expired facts.",
+      "query": "owner timezone",
+      "expected": {
+        "default_active_only": ["fact_0009"],
+        "excluded_by_default": ["fact_0007", "fact_0008"]
+      }
+    }
+  ]
+}

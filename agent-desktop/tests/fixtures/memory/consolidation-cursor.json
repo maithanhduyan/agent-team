@@ -1,0 +1,9 @@
+{
+  "meta": {
+    "spec": "docs/memory-spec.md §8.1 (idempotent/resumable consolidation) + §5.5 (cursor survives rotation)",
+    "note": "Consolidation resumes from the last fully-processed record. Records with ts <= cursor_ts (or id <= last_processed) are NOT reprocessed; a re-run over the same corpus produces no duplicate graduation/decay records."
+  },
+  "cursor_ts": "2026-08-25T09:05:00.000Z",
+  "last_processed": "evt_a1b2c3d4e5f60008",
+  "run_records": ["cons_0001"]
+}

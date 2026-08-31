@@ -1,0 +1,82 @@
+{
+  "meta": {
+    "spec": "docs/memory-spec.md §8.4 (graduation rule), §9 (judge gate), §10.5 (verifier); acceptance §13 rows 9-10; ADR-006",
+    "note": "Each case is a consolidation candidate with `supporting_ids` pointing at distinct observation records in the corpus. The graduation rule requires N = MEMORY_GRADUATION_N distinct supporting observations (default 3, valid 3..5) AND judge approval AND verifier pass. Expected outcome: `graduation` (L3 write) or `rejection` (no write).",
+    "config": { "MEMORY_GRADUATION_N": 3, "valid_range": [3, 5] }
+  },
+  "cases": [
+    {
+      "id": "g1-n2-reject",
+      "case": "§8.4 — N=2 < 3 → no write + rejection record",
+      "candidate": {
+        "tier": "L3",
+        "text": "The owner prefers tea over coffee.",
+        "supporting_ids": ["evt_a1b2c3d4e5f60018", "evt_a1b2c3d4e5f60019"]
+      },
+      "judge": { "kind": "verdict", "name": "approve" },
+      "expected": { "outcome": "rejection", "write_performed": false, "reason_contains": "insufficient" }
+    },
+    {
+      "id": "g2-n3-graduate",
+      "case": "§8.4 — N=3 + judge approve → graduation, L3 block written with observation_count=3",
+      "candidate": {
+        "tier": "L3",
+        "text": "The owner uses Vietnamese for chat.",
+        "supporting_ids": ["evt_a1b2c3d4e5f60002", "evt_a1b2c3d4e5f60013", "evt_a1b2c3d4e5f60014"]
+      },
+      "judge": { "kind": "verdict", "name": "approve" },
+      "expected": {
+        "outcome": "graduation",
+        "write_performed": true,
+        "l3_block": { "observation_count": 3, "status": "active", "provenance": "user_stated", "hot": false }
+      }
+    },
+    {
+      "id": "g3-n5-graduate",
+      "case": "§8.4 — N=5 (upper bound) + judge approve → graduation",
+      "candidate": {
+        "tier": "L3",
+        "text": "The owner uses Vietnamese for chat.",
+        "supporting_ids": [
+          "evt_a1b2c3d4e5f60002", "evt_a1b2c3d4e5f60013", "evt_a1b2c3d4e5f60014",
+          "evt_a1b2c3d4e5f60015", "evt_a1b2c3d4e5f60016"
+        ]
+      },
+      "judge": { "kind": "verdict", "name": "approve" },
+      "expected": { "outcome": "graduation", "write_performed": true, "l3_block": { "observation_count": 5, "status": "active" } }
+    },
+    {
+      "id": "g4-n3-judge-reject",
+      "case": "§8.4 — N=3 but judge rejects → rejection, no write",
+      "candidate": {
+        "tier": "L3",
+        "text": "The owner uses Vietnamese for chat.",
+        "supporting_ids": ["evt_a1b2c3d4e5f60002", "evt_a1b2c3d4e5f60013", "evt_a1b2c3d4e5f60014"]
+      },
+      "judge": { "kind": "verdict", "name": "reject" },
+      "expected": { "outcome": "rejection", "write_performed": false, "reason_contains": "judge" }
+    },
+    {
+      "id": "g5-n6-config-error",
+      "case": "§8.4 — N=6 outside valid range 3..5 → config/validation error (rule cannot apply)",
+      "candidate": {
+        "tier": "L3",
+        "text": "Candidate with too many supporting observations.",
+        "supporting_ids": ["evt_a1b2c3d4e5f60002", "evt_a1b2c3d4e5f60013", "evt_a1b2c3d4e5f60014", "evt_a1b2c3d4e5f60015", "evt_a1b2c3d4e5f60016", "evt_a1b2c3d4e5f60018"]
+      },
+      "judge": null,
+      "expected": { "outcome": "error", "write_performed": false, "error_contains": "MEMORY_GRADUATION_N" }
+    },
+    {
+      "id": "g6-model-inferred-needs-judge",
+      "case": "§4.3 R-PROV-4 / §10.5 — model_inferred-only candidate must not graduate without judge approval (high confidence)",
+      "candidate": {
+        "tier": "L3",
+        "text": "The owner's city has a humid climate.",
+        "supporting_ids": ["evt_a1b2c3d4e5f60005", "evt_a1b2c3d4e5f60005", "evt_a1b2c3d4e5f60005"]
+      },
+      "judge": null,
+      "expected": { "outcome": "rejection", "write_performed": false, "reason_contains": "distinct" }
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "meta": {
+    "spec": "docs/memory-spec.md §9.5 / docs/security-review-memory.md SEC-COST-01 (persisted per-model monthly cost, memory/costs-YYYYMM.json)",
+    "month": "2026-09",
+    "note": "deepseek is at its cap (auto-disabled for the rest of the month); gpt4 and gemini3 below cap. Used by the judge-gate cost-cap tests (mock providers, no real keys)."
+  },
+  "providers": {
+    "deepseek": { "spentUsd": 15.0, "capUsd": 15.0, "disabled": true },
+    "gpt4": { "spentUsd": 2.5, "capUsd": 10.0, "disabled": false },
+    "gemini3": { "spentUsd": 0.0, "capUsd": 10.0, "disabled": false }
+  }
+}
