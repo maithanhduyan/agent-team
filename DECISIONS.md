@@ -7,14 +7,61 @@ the project architecture, or the product scope changes.
 > **Note on ADR numbering:** this file is introduced on `develop` by
 > several PRs in parallel — PR #8 (TASK-180, demo skeleton
 > requirements) carries ADR-001…ADR-003; PR #9 (TASK-6060, memory
-> foundation) carries ADR-004…ADR-008; this PR (TASK-6539, T02
-> architecture & security review) adds ADR-009…ADR-010. On merge, keep
+> foundation) carries ADR-004…ADR-008; PR #10 (TASK-6539, T02
+> architecture & security review) adds ADR-009…ADR-010; this PR
+> (TASK-6644, T03 core memory module) adds ADR-011. On merge, keep
 > all sets; the second PR to merge reconciles the file (trivial
 > append). Per the cto ADR-ownership rule (see the TASK-179 version of
 > this file), the cto assigns final numbers on merge; working numbers
 > on branches never collide because each PR appends its own range.
 
-## ADR-010 — Security requirements for the multi-model judge team (Q5)
+## ADR-011 — T03 core memory module: writer implementation decisions
+
+- **Status:** proposed (TASK-6644 / Redmine #29; T03 core memory module
+  — backend implements the T01 data contract)
+- **Date:** 2026-09
+- **Context:** T03 must ship the append-only L2 writer
+  (`sessions.jsonl`) and the L3 writer (`core.md`) per
+  `docs/memory-spec.md` §4–§6/§10, plus the SEC-MEM-01 render
+  envelope from the T02 security review. Implementation lives in a new
+  `agent-desktop/` Node/TS package (Q4: integration infra is Node/TS
+  native). A few contract details were fixed at implementation time.
+- **Decision (backend scope, T03):**
+  - **Rejection vs quarantine audit records.** R-PROV-1 violations
+    (missing/invalid `provenance`) are **rejected** and the writer
+    appends an `error` audit record; §10.2.1 (no verifiable `source`)
+    and §10.2.2 (injection pattern) violations are **quarantined** and
+    the writer appends a `quarantine` audit record. Both audit records
+    are writer-generated with `provenance: tool_output` and
+    `source.kind: tool` (`memory:writer`) — they are valid records per
+    §5.2 and readable by T06.
+  - **Default field filling.** The writer fills defaults for `id`
+    (`evt_<uuid>`), `ts`, `importance` (0.5), `valid_from` (= ts),
+    `session_id` (null) when omitted, then validates the completed
+    record. `type`, `provenance`, `source`, `content` remain mandatory.
+  - **R-CORE-1 enforcement at the API level.** Every mutating `CoreWriter`
+    method requires a consolidation context carrying a `cons_<uuid>`
+    run id; a live turn/tool cannot construct one (throws
+    `ConsolidationOnlyError`). T05 passes its run id.
+  - **Rotation naming.** Archives are `sessions-YYYYMMDD.jsonl` (one per
+    day, UTC); if the day's archive already exists the current file's
+    content is appended to it, then the current file is truncated
+    (POSIX `rename` would otherwise silently overwrite an existing
+    archive). Rotation is transparent to `readAll()`.
+  - **Injection patterns are additive.** `MEMORY_INJECTION_PATTERNS`
+    appends to the shipped defaults; a misconfigured deployment cannot
+    disable the guardrail by replacing the list.
+  - **SEC-MEM-01 at the formatter layer.** `render.ts` owns the
+    `[MEMORY_START]…[/MEMORY_END]` envelope + "data, not instructions"
+    note; T04 tools must render memory through these helpers.
+- **Consequences:** T04 (search/grep tools) consumes `readAll()` and the
+  render helpers; T05 (consolidation) drives `CoreWriter` with its
+  `cons_<uuid>` run id and writes `supersede`/`decay` L2 records itself;
+  T06 can assert the writer contracts (R-PROV-1, quarantine, rotation
+  transparency) against this package's tests. The `agent-desktop/`
+  package layout is recorded in `ARCHITECTURE.md` §8 (memory subsystem).
+
+
 
 - **Status:** accepted (TASK-6539 / Redmine #27; T02 security review
   of Q5; supplements ADR-008)

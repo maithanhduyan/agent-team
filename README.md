@@ -118,6 +118,12 @@ ai-dev-team/
 │   ├── Dockerfile
 │   ├── src/                  # server, db, redis, agents, tasks, events, git
 │   └── migrations/           # SQL, applied automatically on boot
+├── agent-desktop/            # agent-desktop subproject (v0.4 memory foundation)
+│   ├── src/                  # core memory module (T03): L2 sessions.jsonl
+│   │   └── ...               #   writer, L3 core.md writer, provenance +
+│   │                         #   anti-poisoning guardrails, SEC-MEM-01 render
+│   ├── test/                 # node:test suite (schema/injection/writers/rotation)
+│   └── memory/               # runtime memory data (gitignored; README only)
 └── data/                     # reserved for bind-mount deployments
     ├── postgres/  redis/     #   (compose uses named volumes by default)
 ```

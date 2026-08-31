@@ -35,3 +35,8 @@ data/*/*
 # Reference directories
 .references/
 data/observer.log
+
+# agent-desktop — runtime memory data (created by the memory module;
+# keep the directory README, never commit session/fact data)
+agent-desktop/memory/*
+!agent-desktop/memory/README.md
