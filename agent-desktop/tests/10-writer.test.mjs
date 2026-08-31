@@ -40,9 +40,15 @@ test('T03 writer suite (Redmine #29)', { skip: adapter ? false : skipReason('T03
     const res = await adapter.append(att.record, { memoryDir });
     assert.equal(res.ok, false, 'write must be rejected');
     const after = readFileSync(join(memoryDir, 'sessions.jsonl'), 'utf8').split('\n').filter(Boolean).length;
-    assert.equal(after, before, 'no partial line appended');
+    // spec §13 row 1 / fixture att-1: the rejected write itself leaves no
+    // partial line, but a quarantine/error record IS appended — so the
+    // corpus grows by exactly one audit line (28 -> 29).
+    assert.equal(after, before + 1, 'exactly one error record appended (spec §13 row 1)');
     const last = JSON.parse(readFileSync(join(memoryDir, 'sessions.jsonl'), 'utf8').trim().split('\n').pop());
     assert.equal(last.type, att.expected.record.type, 'an error record is written');
+    // content.code pinned to `provenance_missing` (R-PROV-1-specific code;
+    // decision Redmine #38 — the writer's generic `schema_invalid` for any
+    // validation failure is a backend alignment item, see TESTING.md §5 F1).
     assert.equal(last.content.code, att.expected.record.content.code);
     assert.ok(validateRecord(last).valid, 'the artifact itself is schema-valid');
   });
@@ -141,9 +147,20 @@ test('T03 writer suite (Redmine #29)', { skip: adapter ? false : skipReason('T03
     }
   });
 
-  await t.test('append-only: readAll returns records in append order (R-MEM-1)', async () => {
+  await t.test('§5.5: readAll returns records in file/append order — archives asc, then current (row 3)', async () => {
+    // File order IS the append order (spec §5.5 rotation transparency):
+    // readAll streams archives (asc) then the current file, each line in
+    // the order it was appended. The shipped corpus is deliberately NOT
+    // ts-sorted, so the order contract is asserted on the id sequence of
+    // the corpus records (records appended by earlier row-1/13 subtests
+    // land at the tail of the current file and are not part of it).
     const all = await adapter.readAll({ memoryDir });
-    const timestamps = all.map((r) => Date.parse(r.ts));
-    assert.deepEqual(timestamps, [...timestamps].sort((a, b) => a - b), 'append order preserved');
+    const expected = [
+      ...loadJsonl('memory/sessions-20260801.jsonl'),
+      ...loadJsonl('memory/sessions.jsonl'),
+    ].map((r) => r.id);
+    const corpusIds = new Set(expected);
+    const got = all.filter((r) => corpusIds.has(r.id)).map((r) => r.id);
+    assert.deepEqual(got, expected, 'file/append order preserved (archives asc + current)');
   });
 });
