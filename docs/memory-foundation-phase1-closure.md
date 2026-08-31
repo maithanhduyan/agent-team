@@ -99,3 +99,23 @@ T07 chạy trước artifact T03–T05):
   chính (có redmine_issue_id); task tạo tay (7208/7215) bị xóa.
 - Re-dispatch issue CŨ (#32/#33 — đã có task cũ giữ redmine_issue_id) thì
   sync KHÔNG import lại → phải tạo orchestrator task tay (7202/7203).
+
+## 7. Cập nhật kết quả (sau khi các run về)
+
+- **T07 re-dispatch (TASK-7202):** review hoàn tất — **REQUEST CHANGES** phạm
+  vi hẹp (lớp tích hợp T06). Implementation PR #14–#17 APPROVE về nội dung
+  (15/15 spec §13 + 10/10 guardrails PASS; 197/197 unit test; typecheck +
+  secret-scan sạch). Report merged vào develop (PR #20); issue #33 → Feedback.
+- **T06 re-run (TASK-7203):** suite chạy **0 skip** trên code đã merge —
+  **32 pass / 8 fail** (TESTING.md §5 có root cause + evidence). T05
+  consolidation 6/6 green. PR #22 merged (adapters .ts + harness + TESTING.md).
+- **8 fail → 4 bug Redmine:** #38 (T03 parseCoreMd skip im lặng) / #39 (T04
+  hot-facts decay projection) / #40 (T04 L3 recency anchor — pin spec §7.1)
+  → backend TASK-7436/7437/7438; #41 (3 T06-suite self-consistency defects +
+  tái sinh golden) → tester TASK-7439 (chờ pin #40). Full suite green sau fix
+  wave → T07 chốt APPROVE.
+- **Phase-2 đợt 1:** T09 (#36) + T10 (#37) hoàn tất, cả hai **PM APPROVE**,
+  PR #19/#21 merged (đã resolve conflict DECISIONS.md/ARCHITECTURE.md —
+  renumber T10 ADR-015→ADR-018; restore ADR-015/016/017 bị mất khi merge
+  sai → fix commit b6685f4). Điều kiện tạo ĐỢT 2 (T11–T15) đạt 2/2 — tạo ở
+  vòng tiếp theo, KHÔNG tạo sớm.
