@@ -212,6 +212,14 @@ Contract implemented:
 - **Recency** = `exp(-ln2 · age_days / HALF_LIFE)`, default half-life 30
   days (`MEMORY_RECENCY_HALF_LIFE_DAYS`); L3 recency uses
   `last_observed`, L2 uses `ts`.
+- **Searchable L2 pool is observation-only** (`isSearchableL2Record`):
+  only `type: "observation"` records with non-empty `content.text` rank
+  and are returned. Administrative/audit record types (`session_start`,
+  `session_end`, `tool_call`, `reflection`, `candidate`, `graduation`,
+  `rejection`, `supersede`, `decay`, `hot_promote`/`hot_demote`,
+  `quarantine`, `consolidation`, `error`) never appear in `search_memory`
+  results (spec §7.1 pin, Redmine #42); they stay queryable via
+  `grep_logs`.
 - **Active-only** (`valid_from <= now`, `valid_to` open/future) unless
   `include_expired: true`. Sorted score desc, ties by `ts` desc, then
   `id` asc — fully deterministic for identical inputs.

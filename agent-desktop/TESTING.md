@@ -5,6 +5,42 @@
 > Spec: `docs/memory-spec.md` §13 (acceptance mapping) · Security: `docs/security-review-memory.md` SEC-MEM-01/02
 > Branch: `tester/TASK-7439-redmine-41-bug-t06-suite-fix` · Base: `develop`
 
+## 0. Addendum — Redmine #42 backend fix (TASK-7805): suite now 40/40
+
+> Author: backend (backend@agent-team.local) · Date: 2026-09 · Branch:
+> `backend/TASK-7805-redmine-42-bug-t04-search-me` · Base: `develop`
+
+The two implementation-side divergences this report filed (F1′, F6) are
+**resolved** by the Redmine #42 backend fix. Re-run of the untouched suite
+(`node tests/run-suite.mjs`, no assertion/adapter changes):
+
+```text
+ℹ tests 40  ℹ pass 40  ℹ fail 0
+✔ 00-fixture-selfcheck ................ 17/17
+✔ 10-writer (T03) ...................... 9/9   (row 1 now passes)
+✔ 20-search (T04) ...................... 5/5   (rows 6/7 now pass)
+✔ 30-consolidation (T05) ............... 6/6
+```
+
+- **F1′ fixed — `sessions-writer.ts`:** a rejection caused by a missing or
+  invalid provenance tag (R-PROV-1) is now audited with
+  `content.code: "provenance_missing"` and message
+  `write rejected: provenance is mandatory` (fixture `write-attempts.json`
+  att-1 pin, spec §13 row 1). All other schema failures keep the generic
+  `schema_invalid` code. Unit tests: `test/sessions-writer.test.ts`.
+- **F6 fixed — `search-memory.ts`:** the L2 searchable pool is now
+  observation-only via the new `isSearchableL2Record` predicate
+  (`type === "observation"` **and** non-empty `content.text`). Candidate/
+  session_end/rejection/error/quarantine/decay/reflection/supersede/
+  graduation/tool_call/hot_promote/session_start/… records never rank and
+  no longer displace the golden observation hit set (rank-3 `evt_…0012`
+  candidate vs `evt_…0015` observation). Unit tests:
+  `test/search-memory.test.ts`. Spec §7.1 + §13 and ADR-005 addendum
+  (Redmine #42) pin the observation-only pool; non-observation records stay
+  queryable via `grep_logs`.
+- No T06 fixture/suite/golden change was needed — the golden was already
+  generated on the observation-only pool.
+
 ## 1. Summary
 
 | Metric | Value |
@@ -228,4 +264,5 @@ implementation onto the pinned contract surface:
 | Golden regen | Redmine #40 / TASK-7438 pin (L3 recency = `last_observed`) — this branch |
 | Backend fixes merged | Redmine #38 (T03 parse, F2 — PR #24), #39 (T04 hot facts, F4 — PR #25), #40 (spec pin — PR #26) |
 | New divergences (this run) | T04 searchable-L2 pool (F6 — Redmine #42, open), T03 audit `content.code` (F1′ — noted on #38) |
+| Backend fix (after this run) | Redmine #42 / TASK-7805 resolves F1′ (audit code `provenance_missing`) and F6 (observation-only L2 pool) — suite re-run 40/40 (see §0 addendum) |
 | Input to | T07 [reviewer] #33 — matrix comparison uses this run's PASS/FAIL per §13 row |

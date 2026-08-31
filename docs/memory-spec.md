@@ -436,6 +436,15 @@ configurable via env `MEMORY_ALPHA/BETA/GAMMA` (validated to sum to 1).
 
 **Behavioral contract:**
 
+- **Searchable L2 pool is observation-only:** only L2 records with
+  `type: "observation"` **and** a non-empty `content.text` are ranked
+  and returned (T06 pin, Redmine #42). All other L2 record types —
+  `session_start`, `session_end`, `tool_call`, `reflection`, `candidate`,
+  `graduation`, `rejection`, `supersede`, `decay`, `hot_promote` /
+  `hot_demote`, `quarantine`, `consolidation`, `error` — are
+  administrative/audit records: they carry no rankable observation text
+  and must never displace observation hits (even when their payload
+  contains a text-like string, e.g. a `candidate`'s proposed statement).
 - Active records only (`valid_from <= now`, `valid_to` open or in the
   future) unless `include_expired: true`.
 - Results sorted by `score` desc; ties by `ts` desc.
@@ -833,13 +842,14 @@ default `0600`/`0700` on the memory directory.
 
 | Spec section | Testable acceptance criterion (T06 fixture) |
 |---|---|
-| §4.3 / §10.1 | Write without provenance → rejected; a `quarantine`/`error` record is written |
+| §4.3 / §10.1 | Write without provenance → rejected; a `quarantine`/`error` record is written; the audit `content.code` is `provenance_missing` (not the generic `schema_invalid`) |
 | §5.2 | Every `sessions.jsonl` line validates against the schema (mandatory fields) |
 | §5.5 | Rotation is transparent: records searchable across current + archive files |
 | §6.2 | `core.md` parses to fact blocks; missing required key → parse error |
 | §6.3 | Hot facts (hot, active, importance ≥ 0.8, on the §10.4 Day-30 decay projection) are injected; count ≤ `MEMORY_HOT_MAX` |
 | §7.1 | Retrieval formula matches a hand-computed golden set (α·sim + β·recency + γ·importance) within 1e-6 |
 | §7.1 | Recency anchor: L2 = `record.ts`, L3 = fact `last_observed` (ADR-005 addendum) — golden set computed on the anchor |
+| §7.1 | Searchable L2 pool is observation-only: only `type=observation` records with `content.text` rank; non-observation record types never appear in results |
 | §7.1 | `include_expired`/`provenance`/`since` filters behave as specified |
 | §7.2 | `grep_logs` returns exact lines + context; RE2 regex; limit cap honored |
 | §8.3 | Reflection output has `{context, error, fix}` shape |
