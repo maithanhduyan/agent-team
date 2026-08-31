@@ -294,7 +294,9 @@ numbers.
 > Status: proposed (v1.0) by T02 (TASK-6539 / Redmine #27); details in
 > `docs/memory-spec.md` (T01, PR #9) and
 > `docs/security-review-memory.md` (T02, this PR). Decisions: ADR-009
-> (Q4 boundary), ADR-010 (Q5 judge-team security).
+> (Q4 boundary), ADR-010 (Q5 judge-team security). v0.5 GEPA pipeline
+> design (T09, TASK-7213 / Redmine #36): `docs/gepa-pipeline.md` +
+> ADR-015/016/017.
 
 `agent-desktop` is a DSH deployment on the owner's Windows laptop with
 a Telegram bridge (plan #22, Q1). Code lives in the agent-team repo
@@ -356,6 +358,10 @@ install script — it never builds.
 
 Owner decision Q4: **core GEPA = Python sidecar** (DSPy + GEPA, as
 hermes-agent-self-evolution); **integration = Node/TS native**.
+Full design (this task, T09): **`docs/gepa-pipeline.md`** — loop,
+sidecar boundary + JSON-RPC contract, fitness gate, judge team,
+cost caps, SEC-GEPA-01…11 mapping. Decisions: ADR-015 (pipeline),
+ADR-016 (fitness gate), ADR-017 (judge team + cost cap).
 
 ```text
 ┌──────────── Node/TS (agent-team, trust anchor) ────────────┐
@@ -374,16 +380,38 @@ hermes-agent-self-evolution); **integration = Node/TS native**.
   data-only IPC (no command channel, no callbacks), output
   re-validation in Node (size/semantic/test gates are not
   self-reported), per-job resource + cost caps (ADR-009).
+- **Evolution loop (hermes pattern):** eval dataset (T11) → GEPA
+  evolution in the sidecar (DSPy `Evaluate`/`Reflect`/`Evolve`
+  modules, population + generations, ~$2–10/run, no GPU) → guardrails
+  in Node (size ≤ 15 KB, semantic preservation, test suite 100%) →
+  fitness gate (weighted pass rate, threshold 1.0) → Q5 judge panel →
+  branch + PR → human review (owner + cto; **no auto-merge**, no
+  hot-swap).
+- **Fitness gate (install-dsh, harness T14):**
+  `fitness(c) = Σ(wᵢ·passᵢ)/Σwᵢ ∈ [0,1]`; acceptance = **100% pass**
+  on the full suite (SEC-GEPA-02) + no regression vs base skill
+  (SEC-GEPA-04) + size ≤ 15 KB + judge approval. Mode A = offline
+  harness in repo/CI; Mode B = owner-uploaded Windows Sandbox results
+  (Q3) as merge evidence.
+- **Judge team (Q5):** reuses the T05 `LLMProvider` abstraction +
+  `CostTracker` + verdict schema; panel gpt-4 / gemini-3 / deepseek,
+  default `deepseek` only; missing keys skip the model (never block);
+  per-model monthly caps 15/10/10 USD ($35 total within the $30–50
+  pilot baseline); all capped → evolution pauses safely.
+- **API keys:** `DEEPSEEK_API_KEY` ✅ (stack default);
+  `OPENAI_API_KEY` (gpt-4) and `GEMINI_API_KEY` (gemini-3) ⏳
+  pending from the owner — modules auto-activate when provided.
 - **Security requirements SEC-GEPA-01…11** (isolation, test suite
   100%, size ≤ 15 KB, semantic preservation, no hot-swap, human review
   before merge, no auto-merge, no secrets in candidates, cost caps,
-  dependency pinning, audit trail) — full list in
-  `docs/security-review-memory.md` §5. T09 must implement all of them.
-  The **measurable acceptance criteria** (metric + threshold + how to
-  verify) for the pipeline, the eval dataset and the PR + human-review
-  workflow, plus the definition of "done" for one evolution round, are
-  in `docs/skill-evolution-acceptance.md` (T10, ADR-015).
-
+  dependency pinning, audit trail) — full list and the 1:1 design
+  mapping in `docs/security-review-memory.md` §5 and
+  `docs/gepa-pipeline.md` §8.
+  The **measurable acceptance criteria** (metric + threshold +
+  how to verify) for the pipeline, the eval dataset and the PR +
+  human-review workflow, plus the definition of "done" for one
+  evolution round, are in `docs/skill-evolution-acceptance.md`
+  (T10, ADR-018).
 ### 8.4 Multi-model judge team (Q5) — security
 
 - Functional contract: `LLMProvider` abstraction, panel

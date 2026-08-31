@@ -12,14 +12,16 @@ the project architecture, or the product scope changes.
 > (TASK-6644, T03 core memory module) adds ADR-011; PR #15 (TASK-6645,
 > T04 retrieval tools) adds ADR-012; PR #16 (TASK-6646, T05
 > consolidation job) adds ADR-013; PR #17 (TASK-6654, T08 Telegram
-> bridge) adds ADR-014; PR #18 (TASK-7214, T10 skill-evolution
-> acceptance criteria) adds ADR-015. On merge, keep all sets; the
-> second PR to merge reconciles the file (trivial append). Per the cto
+> bridge) adds ADR-014; the T09 GEPA pipeline design PR (TASK-7213 /
+> Redmine #36) adds ADR-015…ADR-017; the T10 skill-evolution acceptance
+> PR (TASK-7214 / Redmine #37) adds ADR-018 (renumbered on merge by pm —
+> ba's working number 015 collided with cto's ADR-015). On merge, keep
+> all sets; the> second PR to merge reconciles the file (trivial append). Per the cto
 > ADR-ownership rule (see the TASK-179 version of this file), the cto
 > assigns final numbers on merge; working numbers on branches never
 > collide because each PR appends its own range.
 
-## ADR-015 — Skill evolution acceptance criteria: quantitative guardrails + done definition (T10)
+## ADR-018 — Skill evolution acceptance criteria: quantitative guardrails + done definition (T10)
 
 - **Status:** proposed (TASK-7214 / Redmine #37; T10 — BA acceptance
   criteria for the GEPA skill evolution pipeline, plan #22 T09/T10)
@@ -55,7 +57,6 @@ the project architecture, or the product scope changes.
   the audit trail; T14 makes coverage/fitness measurable; T15/T19 review
   against this contract. Full criteria:
   `docs/skill-evolution-acceptance.md`.
-
 ## ADR-014 — T08 Telegram bridge: transport abstraction, sandbox-first, command surface
 
 - **Status:** proposed (TASK-6654 / Redmine #34; T08 — backend wires
