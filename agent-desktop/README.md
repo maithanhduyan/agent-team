@@ -8,8 +8,8 @@ T05 consolidation job)** behind the 4-tier memory model defined in
 security review [`docs/security-review-memory.md`](../../docs/security-review-memory.md)
 (T02, PR #10, SEC-MEM-01/02, SEC-KEY/COST/LOG).
 
-> Scope: **T03 + T04 + T05**. T06 (test fixtures), T08 (Telegram
-> bridge) build on this package.
+> Scope: **T03 + T04 + T05 + T08 (Telegram bridge)**. T06 (test
+> fixtures), T07 (review) build on this package.
 
 ## What this module provides
 
@@ -34,6 +34,48 @@ security review [`docs/security-review-memory.md`](../../docs/security-review-me
 | **Consolidation job** (sleep-time pipeline) | `src/consolidation.ts` | §8–§10, ADR-006/013 |
 | Secret redaction (before logging) | `src/redact.ts` | SEC-LOG-01 |
 | Env configuration | `src/config.ts` | §11 |
+| **Telegram bridge** (T08) | `src/telegram/*` | plan #22 T08/Q1/R7, SEC-COST-02, SEC-MEM-01 |
+
+## Telegram bridge — memory notifications + chat commands (T08)
+
+`agent-desktop` is a DSH deployment on the owner's Windows laptop with a
+Telegram bridge (plan #22, Q1). T08 wires the memory system to Telegram
+— full runbook + sandbox evidence in
+[`docs/TELEGRAM-BRIDGE.md`](../../docs/TELEGRAM-BRIDGE.md):
+
+- **Consolidation events → notification.** After a T05 consolidation
+  run the owner is notified with graduation / supersede / rejection /
+  decay counts **and the per-model judge spend report** (spec §9.5,
+  SEC-COST-02 — USD + caps, no keys).
+- **Chat commands → memory queries.** `/memory search <query>`,
+  `/memory grep <pattern>`, `/memory hot`, `/memory spend`,
+  `/memory help` — all memory-derived replies are rendered through the
+  **SEC-MEM-01 envelope** (`[MEMORY_START]…[/MEMORY_END]` + "data, not
+  instructions", commands.ts).
+- **Sandbox-first (plan #22 T08).** Default CLI mode is
+  `npm run bridge:sandbox` — a file transport, **no network, no token**;
+  CI/sandbox validates the full cycle and the JSONL outbound log is the
+  evidence. Live mode (`TELEGRAM_SANDBOX=0` + token + chat id,
+  `npm run bridge`) is reserved for the owner's laptop (Q3).
+- **Security.** Bot token env-only and never logged (SEC-KEY-01..03);
+  log lines redacted (SEC-LOG-01); non-allowlisted chats ignored;
+  `redactSecrets` masks Telegram `123456789:ABC…` tokens too.
+
+```ts
+import { loadTelegramConfig, TelegramBridge, SandboxTelegramTransport } from './src/index.js';
+
+// Sandbox (default): file transport, no network.
+const cfg = loadTelegramConfig(process.env, memoryDir);
+const bridge = new TelegramBridge({
+    config: cfg,
+    transport: new SandboxTelegramTransport({ file: cfg.sandboxFile }),
+    memory: { search, grep, hotFacts, spend },   // T04 tool wrappers
+    costTracker: cost,                           // SEC-COST-02 spend report
+    environment: 'sandbox',
+});
+const handled = await bridge.pollOnce();          // answer pending commands
+await bridge.notifyConsolidation(result);         // consolidation event → chat
+```
 
 ## L2 — `sessions.jsonl` writer
 
@@ -358,10 +400,12 @@ per-model spend without keys (SEC-COST-02); logs are redacted via
 
 ```bash
 npm install
-npm test          # node --test + tsx (161 tests: T03 writers + T04 tools + T05 consolidation)
+npm test          # node --test + tsx (197 tests: T03 writers + T04 tools + T05 consolidation + T08 telegram bridge)
 npm run typecheck # tsc --noEmit
 npm run build     # tsc -> dist/
 npm run consolidate  # run the consolidation job once (reads env)
+npm run bridge:sandbox  # Telegram bridge SANDBOX cycle (default; no network, no token)
+npm run bridge    # Telegram bridge LIVE loop (requires TELEGRAM_SANDBOX=0 + token + chat id)
 ```
 
 Memory data is runtime state: `agent-desktop/memory/*` is gitignored

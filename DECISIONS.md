@@ -11,11 +11,57 @@ the project architecture, or the product scope changes.
 > architecture & security review) adds ADR-009…ADR-010; PR #14
 > (TASK-6644, T03 core memory module) adds ADR-011; PR #15 (TASK-6645,
 > T04 retrieval tools) adds ADR-012; PR #16 (TASK-6646, T05
-> consolidation job) adds ADR-013. On merge, keep all sets; the
+> consolidation job) adds ADR-013; PR #17 (TASK-6654, T08 Telegram
+> bridge) adds ADR-014. On merge, keep all sets; the
 > second PR to merge reconciles the file (trivial append). Per the cto
 > ADR-ownership rule (see the TASK-179 version of this file), the cto
 > assigns final numbers on merge; working numbers on branches never
 > collide because each PR appends its own range.
+
+## ADR-014 — T08 Telegram bridge: transport abstraction, sandbox-first, command surface
+
+- **Status:** proposed (TASK-6654 / Redmine #34; T08 — backend wires
+  memory to Telegram, plan #22 T08/Q1/R7)
+- **Date:** 2026-09
+- **Context:** T08 must (1) notify the owner on consolidation events
+  with the graduation/decay/supersede counts **and** the per-model
+  judge spend report (SEC-COST-02), and (2) answer chat commands
+  (`search_memory`/`grep_logs` via Telegram, spec §7). Plan #22 T08
+  mandates **sandbox-first**: the integration runs in a sandbox/CI
+  environment before any real-laptop deployment. The existing Telegram
+  bridge docs (TASK-172/173) live outside the agent-team repo (R7) —
+  the spec deliberately defers "Telegram transport mechanics" to T08.
+- **Decision (backend scope, T08):**
+  - **Transport behind an interface.** `TelegramTransport` with two
+    implementations: `HttpTelegramTransport` (real Bot API, LIVE — the
+    owner's laptop per Q3; token env-only, used only to build
+    per-request URLs, never logged — SEC-KEY-01..03) and
+    `SandboxTelegramTransport` (JSONL file transport — inbound command
+    lines + outbound message appends; **no network, no token**). The
+    file doubles as the sandbox evidence log (acceptance criterion 2).
+  - **Sandbox-first default.** `loadTelegramConfig` stays in sandbox
+    mode unless `TELEGRAM_SANDBOX=0` **and** `TELEGRAM_BOT_TOKEN` are
+    both set (an explicit `TELEGRAM_SANDBOX=0` without a token is a
+    config error — no silent token-less live transport). CLI default:
+    `npm run bridge:sandbox`; live: `npm run bridge`.
+  - **Command surface.** `/memory search <query>` → `searchMemory`,
+    `/memory grep <pattern>` → `grepLogs` (RE2-safe), `/memory hot` →
+    `loadHotFacts`, `/memory spend` → `CostTracker.summary()`,
+    `/memory help`. Every memory-derived reply is rendered through the
+    SEC-MEM-01 helpers (`renderSearchResults`/`renderGrepMatches`/
+    `renderHotFacts` — `[MEMORY_START]…[/MEMORY_END]` + "data, not
+    instructions", SEC-MEM-01/02). Non-allowlisted chats are ignored.
+  - **Notification format.** `buildConsolidationNotification` emits
+    counts + per-model spend (USD/caps, disabled flags) and an
+    `_env: sandbox|live` footer — no memory content, no keys
+    (SEC-COST-02, SEC-LOG-01). Failure notifications are redacted.
+  - **R7:** the bridge interface is designed in this task (documented in
+    `docs/TELEGRAM-BRIDGE.md`); if the owner provides the TASK-172/173
+    spec, the transport/command surface can be adapted locally.
+- **Consequences:** T16/T17 (v0.5) package the live loop as a Windows
+  service/installer; T21 (v0.5 UI) reuses the same notification/
+  command helpers; the redaction list now also masks Telegram
+  `123456789:ABC…` tokens (SEC-LOG-01).
 
 ## ADR-013 — T05 consolidation job: run records, decay idempotency, conflict routing
 

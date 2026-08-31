@@ -20,6 +20,10 @@
  * - Consolidation job (T05): `runConsolidationJob`, `runConsolidation`,
  *   `applyConflict`, `applyDecay`, `reflect`, `verifier` (spec §8–§10)
  * - Config: `loadMemoryConfig`
+ * - Telegram bridge (T08): `loadTelegramConfig`, `TelegramBridge`,
+ *   `HttpTelegramTransport`, `SandboxTelegramTransport`, chat commands
+ *   (search/grep/hot/spend/help via SEC-MEM-01), consolidation
+ *   notifications (graduation/decay/supersede + spend report SEC-COST-02)
  */
 
 export {
@@ -284,6 +288,51 @@ export {
     redactSecrets,
     redactJsonValue,
 } from './redact.js';
+
+export {
+    // Telegram bridge (T08 — plan #22 Q1/R7, sandbox-first)
+    TelegramConfigError,
+    loadTelegramConfig,
+    parseChatIds,
+    parsePollIntervalMs,
+    parseTimeoutS,
+    parseMaxMessageLength,
+    type TelegramConfig,
+} from './telegram/config.js';
+
+export {
+    HttpTelegramTransport,
+    SandboxTelegramTransport,
+    truncateMessage,
+    type TelegramTransport,
+    type TelegramUpdate,
+    type TelegramOutbound,
+    type HttpTelegramTransportOptions,
+    type SandboxTelegramTransportOptions,
+} from './telegram/transport.js';
+
+export {
+    TelegramBridge,
+    type TelegramBridgeOptions,
+    type CommandOutcome,
+} from './telegram/bridge.js';
+
+export {
+    buildConsolidationNotification,
+    buildConsolidationErrorNotification,
+    type ConsolidationNotificationOptions,
+    type TelegramEnvironment,
+} from './telegram/notify.js';
+
+export {
+    parseMemoryCommand,
+    executeMemoryCommand,
+    memoryHelpText,
+    formatSpendReport,
+    type MemoryCommand,
+    type MemoryCommandName,
+    type MemoryCommandDeps,
+} from './telegram/commands.js';
 
 export type {
     ISOTimestamp,

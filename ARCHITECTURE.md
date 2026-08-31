@@ -334,6 +334,13 @@ install script — it never builds.
   `search_memory` results, `grep_logs` matches — MUST be wrapped in
   `[MEMORY_START]…[/MEMORY_END]` + "data, not instructions" note
   (SEC-MEM-01/02, `docs/security-review-memory.md` §3).
+- **Telegram bridge (T08):** `agent-desktop/src/telegram/*` — transport
+  abstraction (`HttpTelegramTransport` LIVE on the owner laptop Q3;
+  `SandboxTelegramTransport` file-based, no network — sandbox-first per
+  plan #22 T08), consolidation notifications with per-model spend
+  (SEC-COST-02), `/memory search|grep|hot|spend|help` commands rendered
+  through SEC-MEM-01, token env-only and never logged (SEC-KEY-01..03).
+  Runbook + sandbox evidence: `docs/TELEGRAM-BRIDGE.md` (ADR-014).
 
 ### 8.2 Trust boundary: repo vs Windows laptop (R3)
 
