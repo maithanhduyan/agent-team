@@ -1,5 +1,6 @@
 /**
- * agent-desktop — memory foundation public API (T03 writers + T04 tools).
+ * agent-desktop — memory foundation public API (T03 writers + T04 tools
+ * + T05 consolidation).
  *
  * - L2 append-only writer (`sessions.jsonl`): `SessionsWriter`
  * - L3 fact-block writer (`core.md`): `CoreWriter`
@@ -13,6 +14,11 @@
  * - Hot-fact injection: `loadHotFacts`, `injectHotFacts` (spec §6.3)
  * - SEC-MEM-02 prompt guidance: `buildMemorySystemPrompt` (spec §7.3)
  * - Agentic retrieval budget: `ToolCallBudget`
+ * - Multi-model judge panel (Q5): `LLMProvider`, providers, `judgeGate`,
+ *   `buildPanelFromConfig` (spec §9)
+ * - Cost caps (per model, monthly): `CostTracker` (spec §9.5, SEC-COST-01)
+ * - Consolidation job (T05): `runConsolidationJob`, `runConsolidation`,
+ *   `applyConflict`, `applyDecay`, `reflect`, `verifier` (spec §8–§10)
  * - Config: `loadMemoryConfig`
  */
 
@@ -52,13 +58,25 @@ export {
 } from './injection.js';
 
 export {
+    MemoryConfigError,
     loadMemoryConfig,
     parseRotateMb,
     parsePatternList,
     parseHotImportance,
     parseHotMax,
     parseMaxToolCallsPerTurn,
+    parseGraduationN,
+    parseDecayDays,
+    parseVerifyMinOverlap,
+    parseConsolidateEveryMin,
+    parseConflictOverlap,
+    parseJudgePanelModels,
+    parseJudgeConsensus,
+    parseJudgeMaxModelsPerCall,
+    parseJudgeTimeoutS,
+    parseJudgeCapUsd,
     type MemoryConfig,
+    type JudgeCaps,
 } from './config.js';
 
 export {
@@ -152,6 +170,121 @@ export {
     type GrepMatchRenderInput,
 } from './render.js';
 
+export {
+    PROVENANCE_VALUES,
+    SOURCE_KIND_VALUES,
+    RECORD_TYPE_VALUES,
+    FACT_STATUS_VALUES,
+} from './types.js';
+
+export {
+    // Provider abstraction (spec §9.2, Q5 — ADR-008/ADR-010)
+    DeepSeekProvider,
+    Gpt4Provider,
+    Gemini3Provider,
+    registerProvider,
+    getProvider,
+    listProviders,
+    clearProviders,
+    defaultProviders,
+    buildPanelFromConfig,
+    completionCostUsd,
+    PRICE_TABLE,
+    type LLMProvider,
+    type JudgeModelName,
+    type ProviderOptions,
+    type PriceTable,
+} from './llm-provider.js';
+
+export {
+    CostTracker,
+    monthKeyOf,
+    DEFAULT_JUDGE_CAPS,
+    type CostTrackerOptions,
+    type ProviderCostState,
+    type CostMonthFile,
+} from './costs.js';
+
+export {
+    // Judge gate (spec §9, ADR-008)
+    judgeGate,
+    validateVerdict,
+    parseVerdictText,
+    buildJudgePrompt,
+    resolvePanel,
+    JUDGE_RUBRIC,
+    factStatement,
+    type JudgeGateInput,
+    type JudgeGateResult,
+    type JudgeVerdict,
+    type VerdictValue,
+    type VerdictValidation,
+    type CandidateInput,
+    type FactLike,
+    type SupportingObservation,
+    type JudgeConfig,
+} from './judge.js';
+
+export {
+    // Reflection (spec §8.3)
+    reflect,
+    validateReflection,
+    parseReflectionText,
+    buildReflectPrompt,
+    ReflectionError,
+    type ReflectionLesson,
+    type ReflectOptions,
+} from './reflect.js';
+
+export {
+    // Verifier (spec §10.5)
+    verifyCandidate,
+    findConflictingFacts,
+    statementOverlap,
+    DEFAULT_CONFLICT_OVERLAP,
+    type VerifierInput,
+    type VerifierResult,
+    type VerifierJudge,
+} from './verifier.js';
+
+export {
+    // Consolidation job (spec §8, T05)
+    runConsolidationJob,
+    runConsolidation,
+    judge,
+    applyConflict,
+    applyDecay,
+    consolidate,
+    run,
+    normalizeConsolidationConfig,
+    loadCursor,
+    saveCursor,
+    recordsSince,
+    cursorAfter,
+    cursorFilePath,
+    clusterObservations,
+    observationText,
+    buildGraduationBlock,
+    consolidationDue,
+    type RunConsolidationInput,
+    type RunConsolidationResult,
+    type ApplyConflictInput,
+    type ApplyConflictResult,
+    type ApplyDecayInput,
+    type ApplyDecayResult,
+    type ConsolidationConfig,
+    type ConsolidationConfigInput,
+    type ConsolidationCursor,
+    type ConsolidationJobOptions,
+    type ConsolidationJobResult,
+} from './consolidation.js';
+
+export {
+    // Secret redaction (SEC-LOG-01, ADR-010)
+    redactSecrets,
+    redactJsonValue,
+} from './redact.js';
+
 export type {
     ISOTimestamp,
     Provenance,
@@ -165,11 +298,5 @@ export type {
     FactBlock,
     CoreMdHeader,
     CoreMdDocument,
-} from './types.js';
-
-export {
-    PROVENANCE_VALUES,
-    SOURCE_KIND_VALUES,
-    RECORD_TYPE_VALUES,
-    FACT_STATUS_VALUES,
+    ConsolidationRunStatus,
 } from './types.js';

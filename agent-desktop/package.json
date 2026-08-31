@@ -3,7 +3,7 @@
   "version": "0.4.0",
   "private": true,
   "type": "module",
-  "description": "agent-desktop memory foundation — core memory module (T03): append-only L2 writer (sessions.jsonl), L3 writer (core.md), provenance + anti-poisoning guardrails, SEC-MEM-01 render wrapper; retrieval tools (T04): search_memory (α·sim+β·recency+γ·importance), grep_logs (RE2-safe), hot-fact injection, SEC-MEM-02 trust guidance, agentic query budget",
+  "description": "agent-desktop memory foundation — core memory module (T03): append-only L2 writer (sessions.jsonl), L3 writer (core.md), provenance + anti-poisoning guardrails, SEC-MEM-01 render wrapper; retrieval tools (T04): search_memory (α·sim+β·recency+γ·importance), grep_logs (RE2-safe), hot-fact injection, SEC-MEM-02 trust guidance, agentic query budget; consolidation job (T05): sleep-time pipeline (reflect → graduation → multi-model judge gate → verifier → write), conflict supersede, Day-30 decay, per-model cost caps (spec §8–§10, Q5)",
   "engines": {
     "node": ">=20"
   },
@@ -11,7 +11,9 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test test/*.test.ts",
-    "test:watch": "node --import tsx --test --watch test/*.test.ts"
+    "test:watch": "node --import tsx --test --watch test/*.test.ts",
+    "consolidate": "node --import tsx src/cli-consolidate.ts",
+    "consolidate:built": "node dist/cli-consolidate.js"
   },
   "devDependencies": {
     "@types/node": "^24.10.0",
