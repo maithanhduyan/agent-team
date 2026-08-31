@@ -13,123 +13,50 @@ the project architecture, or the product scope changes.
 > T04 retrieval tools) adds ADR-012; PR #16 (TASK-6646, T05
 > consolidation job) adds ADR-013; PR #17 (TASK-6654, T08 Telegram
 > bridge) adds ADR-014; the T09 GEPA pipeline design PR (TASK-7213 /
-> Redmine #36) adds ADR-015…ADR-017. On merge, keep all sets; the
-> second PR to merge reconciles the file (trivial append). Per the cto
+> Redmine #36) adds ADR-015…ADR-017; the T10 skill-evolution acceptance
+> PR (TASK-7214 / Redmine #37) adds ADR-018 (renumbered on merge by pm —
+> ba's working number 015 collided with cto's ADR-015). On merge, keep
+> all sets; the> second PR to merge reconciles the file (trivial append). Per the cto
 > ADR-ownership rule (see the TASK-179 version of this file), the cto
 > assigns final numbers on merge; working numbers on branches never
 > collide because each PR appends its own range.
 
-## ADR-017 — GEPA judge team + cost cap (Q5, v0.5)
+## ADR-018 — Skill evolution acceptance criteria: quantitative guardrails + done definition (T10)
 
-- **Status:** proposed (TASK-7213 / Redmine #36; T09 GEPA pipeline
-  design; reuses ADR-008/ADR-010)
+- **Status:** proposed (TASK-7214 / Redmine #37; T10 — BA acceptance
+  criteria for the GEPA skill evolution pipeline, plan #22 T09/T10)
 - **Date:** 2026-09
-- **Context:** the GEPA LLM-judge (T12) must use the Q5 multi-model
-  panel (gpt-4 / gemini-3 / deepseek) with provider abstraction,
-  per-model cost caps, and enable/disable config — default DeepSeek
-  only, missing keys never block the pipeline. T05 already shipped the
-  provider abstraction + cost tracker; T09 fixes how the GEPA judge
-  reuses them.
-- **Decision (cto scope):**
-  - The GEPA judge **reuses the T05 machinery** — `LLMProvider`
-    abstraction (`agent-desktop/src/llm-provider.ts`), `CostTracker`
-    caps (`src/costs.ts`, `memory/costs-YYYYMM.json`), and the §9.3
-    verdict schema — one shared panel config (`JUDGE_PANEL_MODELS`,
-    default `deepseek`) across consolidation and evolution.
-  - The GEPA judge prompt adds an evolution rubric: **semantic
-    preservation** (no drift vs base skill), **diff quality**
-    (minimal, reviewable), and **no injection / no instructions**
-    (complements SEC-GEPA-08 + the deterministic injection scanner).
-    Verdicts are recorded to the run manifest (SEC-GEPA-11) and as L2
-    records (R-JUDGE-5) — model + verdict only, never keys.
-  - **Single-model fallback (DeepSeek-only) does not block the
-    pipeline** (SEC-KEY-03); the only pause is the all-capped state
-    (below).
-  - **Cost caps (SEC-GEPA-09):** per-model monthly caps shared with
-    T05 (defaults DeepSeek $15 / gpt-4 $10 / gemini-3 $10 = $35,
-    within the $30–50/month pilot baseline, Q5). Model capped →
-    auto-disable for the month (SEC-COST-01); all capped → evolution
-    **pauses safely** — no unjudged candidate proceeds, no cap
-    override; deterministic guardrails never substitute for the judge.
-- **Consequences:** T12 implements the GEPA judge call against the
-  shared panel; T10 acceptance criteria and T15 review verify the
-  pause/skip behaviour; the owner provides `OPENAI_API_KEY` /
-  `GEMINI_API_KEY` to activate the extra modules. Full rationale in
-  `docs/gepa-pipeline.md` §6–§7.
-
-## ADR-016 — Fitness gate for `install-dsh` (harness T14, v0.5)
-
-- **Status:** proposed (TASK-7213 / Redmine #36; T09 GEPA pipeline
-  design; input to T10/T12/T14)
-- **Date:** 2026-09
-- **Context:** SEC-GEPA-02/03/04 require quantitative gates (test
-  suite 100%, size ≤ 15 KB, semantic preservation). T09 must define
-  the fitness function and acceptance threshold for the pilot skill
-  `install-dsh` on the Windows Sandbox test-suite harness (T14,
-  plan #22 R1/Q3).
-- **Decision (cto scope):**
-  - **Fitness function:** for candidate `c` over a suite of `N` test
-    cases with weights `wᵢ ∈ (0,1]` and binary outcomes `passᵢ`:
-    `fitness(c) = (Σ wᵢ·passᵢ) / (Σ wᵢ) ∈ [0,1]`. Default weights are
-    uniform; the dataset manifest may weight safety-critical planted
-    failures (EFS / junction / service password) higher for
-    **ranking** only.
-  - **Acceptance threshold:** `fitness = 1.0` (**100% pass**) on the
-    full suite (SEC-GEPA-02) + the candidate passes **every test the
-    base skill passed** (regression subset, SEC-GEPA-04) + size
-    ≤ 15 KB (SEC-GEPA-03) + judge approval (ADR-017). The 100% gate is
-    hard — never traded against cost/speed.
-  - **Harness modes (Q3):** Mode A = offline harness in the repo/CI
-    eval sandbox (used for the evolution loop + gate); Mode B = the
-    owner runs the same suite in Windows Sandbox and uploads result
-    JSON (merge evidence for T17 + dataset refresh for T11). One
-    result schema, one fitness function.
-- **Consequences:** T14 packages the suite with the planted failures
-  and emits the machine-readable result schema; T12 implements the
-  gate; T10/T15 verify. Details in `docs/gepa-pipeline.md` §5.
-
-## ADR-015 — GEPA evolution pipeline: loop, sidecar boundary, guardrails (Q4, v0.5)
-
-- **Status:** proposed (TASK-7213 / Redmine #36; T09 GEPA pipeline
-  design; implements SEC-GEPA-01…11 and the ADR-009 boundary)
-- **Date:** 2026-09
-- **Context:** owner decision Q4 (Redmine #22) = hybrid GEPA stack:
-  core (DSPy + GEPA, hermes-agent-self-evolution pattern) as a
-  **Python sidecar**, integration infra/tools/deploy **Node/TS
-  native**. T02 fixed the security boundary (ADR-009); T09 details
-  the functional pipeline.
-- **Decision (cto scope):**
-  - **Loop (per run `evo_<yyyymmdd>_<seq>`):** dataset prep (T11,
-    redacted, SEC-GEPA-08) → GEPA evolution in the sidecar (DSPy
-    `Evaluate`/`Reflect`/`Evolve` modules; population
-    `EVOLUTION_POPULATION_SIZE`=8, generations
-    `EVOLUTION_GENERATIONS`=3, elitism, ~$2–10/run, no GPU) →
-    guardrails re-validated in Node (size ≤ 15 KB, test suite 100%,
-    semantic preservation — sidecar self-report never trusted) →
-    fitness gate (ADR-016) → Q5 judge panel (ADR-017) → branch + PR
-    (T13) → human review (owner + cto, **no auto-merge**, no
-    hot-swap).
-  - **Sidecar boundary (functional, per ADR-009):** sidecar = compute
-    worker spawned per run (subprocess over stdio, or pinned
-    container); JSON-RPC 2.0, schema-validated, request/response
-    only, no command channel/callbacks; data whitelist = dataset +
-    base skill + env-less config + job id + scratch dir; never keys /
-    git credentials / memory files / host paths. Sidecar runs in the
-    disposable SEC-GEPA-01 sandbox (non-root, scratch-only, per-job
-    resource + cost limits).
-  - **Done/not-done per cycle (contract for T10):** done = dataset
-    valid + ≥1 generation + guardrails pass + fitness = 1.0 + judge
-    approves + PR open with audit trail (SEC-GEPA-11); rejected when
-    any gate fails; paused when the judge panel is all-capped.
-  - **Audit trail:** run manifest `evolution/runs/<job_id>/`
-    (dataset sha256, sidecar version/digest, config, per-generation
-    candidates + guardrail results + verdicts + fitness + final PR) so
-    T15/T19 can replay.
-- **Consequences:** T11–T15 implement against
-  `docs/gepa-pipeline.md`; the JSON-RPC contract and candidate output
-  contract are fixed there; `.env.example` gains the `EVOLUTION_*`
-  surface. Full design in `docs/gepa-pipeline.md` §3–§5.
-
+- **Context:** v0.5 evolves `SKILL.md` skills (first `install-dsh`) via
+  a GEPA pipeline (Q4: Python sidecar core + Node/TS integration;
+  Q5: multi-model judge team). SEC-GEPA-01…11
+  (`docs/security-review-memory.md` §5) set the mandatory security
+  constraints but not the measurable acceptance thresholds. T11–T15
+  need an unambiguous definition of what makes a dataset valid, a
+  candidate acceptable, and one evolution round "done".
+- **Decision (BA scope, acceptance contract):**
+  - **Eval dataset** is valid iff sources are traceable (sandbox test
+    or real error log, §4.1), every case is `{context, error, fix}` and
+    schema-valid (§4.2), coverage minima are met (`EVAL_MIN_CASES`=20,
+    ≥3 per scenario class, every T14 manifest class present, §4.3), and
+    there are 0 secret-scan hits (SEC-GEPA-08, §4.4).
+  - **Guardrails are quantitative gates**: fitness = 100% on the pinned
+    dataset (SEC-GEPA-02), size ≤ 15 KB (SEC-GEPA-03), 0 regressions
+    vs base skill on the identical suite (SEC-GEPA-04), 0 hot-swap
+    events (SEC-GEPA-05), 2 approvals owner+cto (SEC-GEPA-06), 0
+    auto-merge events (SEC-GEPA-07), per-model cost caps with
+    all-capped ⇒ pause (SEC-GEPA-09), pinned sidecar deps (SEC-GEPA-10),
+    complete + replayable audit trail (SEC-GEPA-11). SEC-GEPA-01
+    (isolation) = 0 escape events.
+  - **Done for one round** = all merge conditions D-1…D-9 hold (§7.1);
+    any reject condition R-1…R-11 ⇒ **rejected — no merge** (§7.2);
+    cost-capped runs end as **paused** (R-10).
+  - Defaults are env-configurable (`EVAL_*`, `EVOLUTION_*`); the fitness
+    floor and size cap are fixed and may not be lowered/raised.
+- **Consequences:** T11 builds datasets against §4; T12 gates candidates
+  against §5; T13 implements the PR + human-review workflow of §6 with
+  the audit trail; T14 makes coverage/fitness measurable; T15/T19 review
+  against this contract. Full criteria:
+  `docs/skill-evolution-acceptance.md`.
 ## ADR-014 — T08 Telegram bridge: transport abstraction, sandbox-first, command surface
 
 - **Status:** proposed (TASK-6654 / Redmine #34; T08 — backend wires
@@ -336,7 +263,7 @@ the project architecture, or the product scope changes.
   `buildMemorySystemPrompt` for the Telegram bridge; T21 (v0.5) renders
   search results/provenance via the SEC-MEM-01 envelope.
 
-
+## ADR-010 — Security requirements for the multi-model judge team (Q5)
 
 - **Status:** accepted (TASK-6539 / Redmine #27; T02 security review
   of Q5; supplements ADR-008)

@@ -407,7 +407,11 @@ ADR-016 (fitness gate), ADR-017 (judge team + cost cap).
   dependency pinning, audit trail) — full list and the 1:1 design
   mapping in `docs/security-review-memory.md` §5 and
   `docs/gepa-pipeline.md` §8.
-
+  The **measurable acceptance criteria** (metric + threshold +
+  how to verify) for the pipeline, the eval dataset and the PR +
+  human-review workflow, plus the definition of "done" for one
+  evolution round, are in `docs/skill-evolution-acceptance.md`
+  (T10, ADR-018).
 ### 8.4 Multi-model judge team (Q5) — security
 
 - Functional contract: `LLMProvider` abstraction, panel

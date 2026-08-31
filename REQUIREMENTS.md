@@ -329,3 +329,36 @@ no unbounded drift).
 | Downstream tasks | T02 [cto] review → T03/T04/T05 [backend] → T06 [tester] → T07 [reviewer] → T08 [backend] Telegram |
 | Decisions | `DECISIONS.md` ADR-004 … ADR-008 (this PR) |
 | Redmine | Issue #25 + project agent-desktop, version v0.4 Memory Foundation |
+
+---
+
+## 7. v0.5 Skill Evolution (GEPA) — acceptance criteria (T10)
+
+> **Task:** TASK-7214 / Redmine #37 (T10 — acceptance criteria cho skill
+> evolution) · **Status:** proposed (T09 design #36 in progress) ·
+> **Version:** v0.5 Skill Evolution (due 2026-10-30)
+
+The v0.5 milestone evolves `SKILL.md` skills (first: `install-dsh`)
+through a GEPA pipeline (plan #22 Q4/Q5): eval dataset → evolution →
+guardrails → PR + human review. The full acceptance criteria — eval
+dataset validity, quantitative guardrails SEC-GEPA-01…11, PR + human
+review workflow, and the definition of "done" for one evolution round —
+are specified in **`docs/skill-evolution-acceptance.md`** (T10, this
+PR). Requirements view:
+
+- **User stories:** US-SKILL-001 (evolve from real failures),
+  US-SKILL-002 (evolve safely — guardrails), US-SKILL-003 (humans
+  approve every evolved skill), US-SKILL-004 (know exactly when a round
+  is done) — see `docs/skill-evolution-acceptance.md` §3.
+- **Definition of "done" (merge-ready):** dataset valid → evolution run
+  ok → fitness = 100% (SEC-GEPA-02) → no regression (SEC-GEPA-04) →
+  all guardrails pass → PR with full metadata → owner + cto approval
+  (SEC-GEPA-06) → human merge (SEC-GEPA-07) → activation between
+  sessions (SEC-GEPA-05). Any reject condition (§7.2 of the acceptance
+  doc) ⇒ **rejected — no merge**.
+- **Downstream:** T11 eval dataset builder → T12 GEPA runner + fitness
+  gate → T13 evolved-skill PR workflow → T14 Windows Sandbox harness →
+  T15 review → T19 release gate (đợt 2 — created only after T09/T10 are
+  approved).
+- **Decisions:** `DECISIONS.md` ADR-009/010 (existing) + ADR-015 (this
+  PR).
