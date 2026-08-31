@@ -4,11 +4,82 @@ Architecture and scope decisions are recorded here as short ADRs, in
 reverse chronological order. Add a new entry whenever a public contract,
 the project architecture, or the product scope changes.
 
-> **Note on ADR numbering:** this file is introduced on `develop` by two
-> PRs in parallel — PR #8 (TASK-180, demo skeleton requirements) carries
-> ADR-001…ADR-003, this PR (TASK-6060, memory foundation) carries
-> ADR-004…ADR-008. On merge, keep both sets; the second PR to merge
-> reconciles the file (trivial append).
+> **Note on ADR numbering:** this file is introduced on `develop` by
+> several PRs in parallel — PR #8 (TASK-180, demo skeleton
+> requirements) carries ADR-001…ADR-003; PR #9 (TASK-6060, memory
+> foundation) carries ADR-004…ADR-008; this PR (TASK-6539, T02
+> architecture & security review) adds ADR-009…ADR-010. On merge, keep
+> all sets; the second PR to merge reconciles the file (trivial
+> append). Per the cto ADR-ownership rule (see the TASK-179 version of
+> this file), the cto assigns final numbers on merge; working numbers
+> on branches never collide because each PR appends its own range.
+
+## ADR-010 — Security requirements for the multi-model judge team (Q5)
+
+- **Status:** accepted (TASK-6539 / Redmine #27; T02 security review
+  of Q5; supplements ADR-008)
+- **Date:** 2026-08
+- **Context:** ADR-008 defines the functional contract of the
+  multi-model judge panel (gpt-4 / gemini-3 / deepseek). The T02
+  security review adds the mandatory security envelope: key custody,
+  per-model cost caps, and no secrets in logs/artifacts
+  (`docs/security-review-memory.md` §7).
+- **Decision (cto scope, security):**
+  - **SEC-KEY-01:** API keys live in environment / `.env` (gitignored)
+    / compose secrets only — never in memory files, run logs, PR
+    bodies, Redmine comments, or artifacts (SECURITY.md class 2).
+    `DEEPSEEK_API_KEY` exists; `OPENAI_API_KEY` (gpt-4) and
+    `GEMINI_API_KEY` (gemini-3) are pending from the owner and activate
+    the corresponding panel modules when present.
+  - **SEC-KEY-02:** the `LLMProvider` abstraction loads keys at process
+    start and never serializes them; L2-judged records (spec §9.4
+    R-JUDGE-5) store model name + verdict only, never keys or full
+    prompt echoes.
+  - **SEC-KEY-03:** missing keys disable a model (skip, not fail);
+    default panel `deepseek` only; no unjudged write ever.
+  - **SEC-COST-01/02:** per-model monthly caps (defaults DeepSeek $15 /
+    gpt-4 $10 / gemini-3 $10); cap → auto-disable for the month; all
+    capped → consolidation/evolution pauses safely; spend reported to
+    the owner (T08) without keys.
+  - **SEC-LOG-01/02:** judge/reflection path redacts request content
+    before logging; secret-scan guard blocks key-shaped strings in
+    commits.
+- **Consequences:** T05 (consolidation judge) and T12 (GEPA LLM-judge)
+  implement the envelope; T06 tests cap/disable behaviour with mock
+  providers; T08 reports spend. Full rationale in
+  `docs/security-review-memory.md` §7.
+
+## ADR-009 — Q4: Python sidecar (GEPA core) ↔ Node/TS (integration) boundary
+
+- **Status:** accepted (TASK-6539 / Redmine #27; owner decision Q4 in
+  Redmine #22; detailed in T09)
+- **Date:** 2026-08
+- **Context:** the owner decided (Q4) a **hybrid** GEPA stack: the core
+  (DSPy + GEPA, as hermes-agent-self-evolution) runs as a **Python
+  sidecar**, while integration infra/tools/deploy stay **Node/TS
+  native** in agent-team. T02 fixes the security boundary before T09
+  details the functional interface.
+- **Decision (cto scope, `docs/security-review-memory.md` §6):**
+  - **Trust anchor = Node/TS:** it owns git/PRs, the skill registry,
+    API keys (env only), and enforces guardrails SEC-GEPA-01…11;
+    review gates (T13/T15/T19) live on this side.
+  - **Python sidecar = compute worker:** separate process, spawned per
+    run, sandboxed (SEC-GEPA-01) with a dedicated non-root user, no
+    access to the real workspace, memory files, or credentials.
+  - **IPC:** single schema-validated protocol (JSON-RPC over stdio or
+    127.0.0.1); request/response only — the sidecar **never initiates
+    actions**; no command channel, no callbacks.
+  - **Data whitelist:** in = eval dataset, base skill, env-less config,
+    job id; out = candidates + fitness + guardrail results + verdicts.
+    Never keys, git credentials, memory files, or host paths outside
+    the sandbox scratch dir.
+  - **Anti-escalation:** capability drop (`no_new_privs`/non-root, no
+    inherited secrets), output re-validation in the trusted Node side
+    (size/semantic/test gates are not self-reported by the sidecar),
+    per-job resource + cost limits, disposable scratch.
+- **Consequences:** T09 designs the IPC contract and maps
+  SEC-GEPA-01…11; T12/T13 implement; T15/T19 verify. The boundary is
+  also recorded in `ARCHITECTURE.md` (§agent-desktop).
 
 ## ADR-008 — Multi-model judge team for consolidation (Q5)
 
