@@ -40,7 +40,11 @@ export type L2RecordType =
     | 'hot_promote'
     | 'hot_demote'
     | 'quarantine'
+    | 'consolidation'   // T05 run record (id cons_<uuid>, spec §8.1; ADR-013)
     | 'error';
+
+/** Consolidation run record statuses (T05, ADR-013). */
+export type ConsolidationRunStatus = 'ok' | 'error' | 'paused';
 
 /** Observation kinds (spec §5.3 `observation.content.kind`). */
 export type ObservationKind =
@@ -64,6 +68,7 @@ export type RecordContent =
     | { fact_id: string; importance_before: number; importance_after: number; reason: 'day30' } // decay
     | { fact_id: string; importance: number }                                   // hot_promote / hot_demote
     | { reason: 'injection_pattern' | 'no_source' | 'conflict'; text: string; snippet?: string } // quarantine
+    | { run_id: string; status: ConsolidationRunStatus; processed: number; graduated: number; rejected: number; superseded: number; decayed: number; message?: string } // consolidation (T05 run record)
     | { code: string; message: string };                                        // error
 
 /** One line of `sessions.jsonl` (spec §5.2). */
@@ -149,6 +154,7 @@ export const RECORD_TYPE_VALUES: readonly L2RecordType[] = [
     'hot_promote',
     'hot_demote',
     'quarantine',
+    'consolidation',
     'error',
 ];
 

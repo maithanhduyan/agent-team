@@ -1,5 +1,6 @@
 /**
- * Configuration for the memory module (T03 writers + T04 retrieval tools).
+ * Configuration for the memory module (T03 writers + T04 retrieval tools
+ * + T05 consolidation job).
  *
  * Env surface per spec §11:
  * - `MEMORY_DIR` — memory data directory (default `<project>/memory`).
@@ -16,9 +17,11 @@
  * - `MEMORY_MAX_TOOL_CALLS_PER_TURN` — agentic retrieval budget (default 5).
  * - `MEMORY_RUNS_DIR` — DSH run-log directory for `grep_logs(files: "runs")`
  *   (default `<project>/.agent-team/runs`, spec §7.2).
- *
- * T05 (consolidation) extends this surface further
- * (`MEMORY_GRADUATION_N`, `MEMORY_DECAY_DAYS`, `JUDGE_*`, ...).
+ * - T05 (consolidation) adds: `MEMORY_GRADUATION_N`, `MEMORY_DECAY_DAYS`,
+ *   `MEMORY_VERIFY_MIN_OVERLAP`, `MEMORY_CONSOLIDATE_EVERY_MIN`,
+ *   `MEMORY_CONFLICT_OVERLAP`, `JUDGE_PANEL_MODELS`, `JUDGE_CONSENSUS`,
+ *   `JUDGE_MAX_MODELS_PER_CALL`, `JUDGE_TIMEOUT_S`, `JUDGE_CAP_*_USD`
+ *   (spec §8–§10 / §11).
  */
 
 import { DEFAULT_INJECTION_PATTERNS } from './injection.js';
@@ -31,6 +34,21 @@ import {
     parseRetrievalWeights,
     type RetrievalWeights,
 } from './retrieval.js';
+
+/** Thrown when a memory config value is invalid (spec §11 hard errors). */
+export class MemoryConfigError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'MemoryConfigError';
+    }
+}
+
+/** Per-model judge monthly cost caps in USD (spec §9.5). */
+export interface JudgeCaps {
+    deepseek: number;
+    gpt4: number;
+    gemini3: number;
+}
 
 export interface MemoryConfig {
     /** Memory data directory (canonical layout `memory/` inside the project root). */
@@ -51,6 +69,27 @@ export interface MemoryConfig {
     maxToolCallsPerTurn: number;
     /** DSH run-log directory for `grep_logs(files: "runs")` (§7.2). */
     runsDir: string;
+    // ---- T05 consolidation (spec §8–§10 / §11) ----
+    /** Graduation observation count N (default 3, validated 3..5, §8.4). */
+    graduationN: number;
+    /** Decay period in days (Day-30, §10.4). */
+    decayDays: number;
+    /** Verifier citation token-overlap threshold (default 0.3, §10.5). */
+    verifyMinOverlap: number;
+    /** Consolidation schedule interval in minutes (§8.1). */
+    consolidateEveryMin: number;
+    /** Conflict-overlap threshold for supersede detection (default 0.5, §10.3, ADR-013). */
+    conflictOverlap: number;
+    /** Enabled judge models in priority order (default `deepseek`, §9.4). */
+    judgePanelModels: string[];
+    /** Judge consensus mode `any` | `majority` (default `any`, §9.4). */
+    judgeConsensus: 'any' | 'majority';
+    /** Max judge panel size per verdict (default 3, §9.4). */
+    judgeMaxModelsPerCall: number;
+    /** Per-model judge timeout in seconds (default 30, §9.4). */
+    judgeTimeoutS: number;
+    /** Per-model monthly cost caps USD (defaults 15/10/10, §9.5). */
+    judgeCaps: JudgeCaps;
 }
 
 /** Parse `MEMORY_HOT_IMPORTANCE` (default 0.8); invalid → fallback. */
@@ -118,6 +157,125 @@ export function parsePatternList(value: string | undefined): string[] {
     return out;
 }
 
+/** Parse `MEMORY_GRADUATION_N` (default 3). Must be an integer in 3..5
+ * (spec §8.4 — validated at boot, hard error like the retrieval weights). */
+export function parseGraduationN(value: string | undefined, fallback = 3): number {
+    if (value === undefined || value.trim() === '') {
+        return fallback;
+    }
+    const n = Number(value);
+    if (!Number.isInteger(n) || n < 3 || n > 5) {
+        throw new MemoryConfigError(
+            `MEMORY_GRADUATION_N must be an integer in 3..5 (spec §8.4), got "${value}"`,
+        );
+    }
+    return n;
+}
+
+/** Parse `MEMORY_DECAY_DAYS` (default 30, Day-30 policy §10.4); invalid → fallback. */
+export function parseDecayDays(value: string | undefined, fallback = 30): number {
+    if (value === undefined || value.trim() === '') {
+        return fallback;
+    }
+    const n = Number(value);
+    if (!Number.isInteger(n) || n <= 0) {
+        return fallback;
+    }
+    return n;
+}
+
+/** Parse `MEMORY_VERIFY_MIN_OVERLAP` (default 0.3, §10.5); invalid → fallback. */
+export function parseVerifyMinOverlap(value: string | undefined, fallback = 0.3): number {
+    if (value === undefined || value.trim() === '') {
+        return fallback;
+    }
+    const n = Number(value);
+    if (!Number.isFinite(n) || n < 0 || n > 1) {
+        return fallback;
+    }
+    return n;
+}
+
+/** Parse `MEMORY_CONSOLIDATE_EVERY_MIN` (default 360, §8.1); invalid → fallback. */
+export function parseConsolidateEveryMin(value: string | undefined, fallback = 360): number {
+    if (value === undefined || value.trim() === '') {
+        return fallback;
+    }
+    const n = Number(value);
+    if (!Number.isInteger(n) || n <= 0) {
+        return fallback;
+    }
+    return n;
+}
+
+/** Parse `MEMORY_CONFLICT_OVERLAP` (default 0.5, §10.3 — ADR-013 internal knob); invalid → fallback. */
+export function parseConflictOverlap(value: string | undefined, fallback = 0.5): number {
+    if (value === undefined || value.trim() === '') {
+        return fallback;
+    }
+    const n = Number(value);
+    if (!Number.isFinite(n) || n < 0 || n > 1) {
+        return fallback;
+    }
+    return n;
+}
+
+/** Parse `JUDGE_PANEL_MODELS` (default `deepseek`, §9.4) — comma-separated, priority order. */
+export function parseJudgePanelModels(value: string | undefined, fallback: string[] = ['deepseek']): string[] {
+    if (value === undefined || value.trim() === '') {
+        return [...fallback];
+    }
+    const out = parsePatternList(value);
+    return out.length > 0 ? out : [...fallback];
+}
+
+/** Parse `JUDGE_CONSENSUS` (default `any`, §9.4); invalid → fallback. */
+export function parseJudgeConsensus(
+    value: string | undefined,
+    fallback: 'any' | 'majority' = 'any',
+): 'any' | 'majority' {
+    if (value === 'any' || value === 'majority') {
+        return value;
+    }
+    return fallback;
+}
+
+/** Parse `JUDGE_MAX_MODELS_PER_CALL` (default 3, §9.4); invalid → fallback. */
+export function parseJudgeMaxModelsPerCall(value: string | undefined, fallback = 3): number {
+    if (value === undefined || value.trim() === '') {
+        return fallback;
+    }
+    const n = Number(value);
+    if (!Number.isInteger(n) || n <= 0) {
+        return fallback;
+    }
+    return n;
+}
+
+/** Parse `JUDGE_TIMEOUT_S` (default 30, §9.4); invalid → fallback. */
+export function parseJudgeTimeoutS(value: string | undefined, fallback = 30): number {
+    if (value === undefined || value.trim() === '') {
+        return fallback;
+    }
+    const n = Number(value);
+    if (!Number.isFinite(n) || n <= 0) {
+        return fallback;
+    }
+    return n;
+}
+
+/** Parse a `JUDGE_CAP_*_USD` value (spec §9.5); invalid → fallback. */
+export function parseJudgeCapUsd(value: string | undefined, fallback: number): number {
+    if (value === undefined || value.trim() === '') {
+        return fallback;
+    }
+    const n = Number(value);
+    if (!Number.isFinite(n) || n < 0) {
+        return fallback;
+    }
+    return n;
+}
+
 /**
  * Load the memory configuration from the environment. `baseDir` is the
  * agent-desktop project root used to resolve the default `memoryDir`
@@ -149,5 +307,20 @@ export function loadMemoryConfig(
         hotMax,
         maxToolCallsPerTurn,
         runsDir,
+        // ---- T05 consolidation ----
+        graduationN: parseGraduationN(env.MEMORY_GRADUATION_N),
+        decayDays: parseDecayDays(env.MEMORY_DECAY_DAYS),
+        verifyMinOverlap: parseVerifyMinOverlap(env.MEMORY_VERIFY_MIN_OVERLAP),
+        consolidateEveryMin: parseConsolidateEveryMin(env.MEMORY_CONSOLIDATE_EVERY_MIN),
+        conflictOverlap: parseConflictOverlap(env.MEMORY_CONFLICT_OVERLAP),
+        judgePanelModels: parseJudgePanelModels(env.JUDGE_PANEL_MODELS),
+        judgeConsensus: parseJudgeConsensus(env.JUDGE_CONSENSUS),
+        judgeMaxModelsPerCall: parseJudgeMaxModelsPerCall(env.JUDGE_MAX_MODELS_PER_CALL),
+        judgeTimeoutS: parseJudgeTimeoutS(env.JUDGE_TIMEOUT_S),
+        judgeCaps: {
+            deepseek: parseJudgeCapUsd(env.JUDGE_CAP_DEEPSEEK_USD, 15),
+            gpt4: parseJudgeCapUsd(env.JUDGE_CAP_GPT4_USD, 10),
+            gemini3: parseJudgeCapUsd(env.JUDGE_CAP_GEMINI3_USD, 10),
+        },
     };
 }

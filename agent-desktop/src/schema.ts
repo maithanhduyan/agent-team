@@ -56,6 +56,7 @@ const CONTENT_REQUIRED_KEYS: Record<L2RecordType, readonly string[]> = {
     hot_promote: ['fact_id', 'importance'],
     hot_demote: ['fact_id', 'importance'],
     quarantine: ['reason', 'text'],
+    consolidation: ['run_id', 'status', 'processed', 'graduated', 'rejected', 'superseded', 'decayed'],
     error: ['code', 'message'],
 };
 

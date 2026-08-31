@@ -10,11 +10,77 @@ the project architecture, or the product scope changes.
 > foundation) carries ADR-004…ADR-008; PR #10 (TASK-6539, T02
 > architecture & security review) adds ADR-009…ADR-010; PR #14
 > (TASK-6644, T03 core memory module) adds ADR-011; PR #15 (TASK-6645,
-> T04 retrieval tools) adds ADR-012. On merge, keep all sets; the
+> T04 retrieval tools) adds ADR-012; PR #16 (TASK-6646, T05
+> consolidation job) adds ADR-013. On merge, keep all sets; the
 > second PR to merge reconciles the file (trivial append). Per the cto
 > ADR-ownership rule (see the TASK-179 version of this file), the cto
 > assigns final numbers on merge; working numbers on branches never
 > collide because each PR appends its own range.
+
+## ADR-013 — T05 consolidation job: run records, decay idempotency, conflict routing
+
+- **Status:** proposed (TASK-6646 / Redmine #31; T05 — backend
+  implements spec §8–§10 + the Q5 judge gate)
+- **Date:** 2026-09
+- **Context:** T05 must ship the sleep-time consolidation job
+  (extract → reflect → candidate → graduation → judge gate → verifier
+  → write), the multi-model judge gate (Q5, ADR-008/ADR-010), the
+  Day-30 decay pass and the conflict/supersede flow. A few contract
+  details were fixed at implementation time, aligned with the T06
+  fixtures (agent-desktop/tests/).
+- **Decision (backend scope, T05):**
+  - **New L2 record type `consolidation` (contract addition).** Spec
+    §8.1 requires a `cons_<uuid>` run record, but §5.3 defines no type
+    for it. T05 adds `consolidation` with content
+    `{run_id, status: ok|error|paused, processed, graduated, rejected,
+    superseded, decayed, message?}` — id `cons_<uuid>`, provenance
+    `tool_output`. On failure the record is type `error` (code
+    `consolidation_failed`) exactly as §8.1 says. `types.ts`,
+    `schema.ts` and `docs/memory-spec.md` §5.3 are updated.
+  - **Cursor + run records live in `memory/consolidation-cursor.json`**
+    (`{cursor_ts, last_processed, run_records[]}`); the cursor is
+    advanced past the run's own records (re-read after writes) so a
+    re-run is idempotent and survives rotation (§5.5). T06 pins the
+    file shape.
+  - **Decay is idempotent via the L2 `decay` record trail.** The decay
+    anchor per fact = `max(last_observed, last decay record ts)`, so a
+    fact is decayed once per 30-day cycle; stale (≥ 2 cycles, ≈ 60
+    days) facts are skipped and hot facts below
+    `MEMORY_HOT_IMPORTANCE` are demoted (`hot_demote`). Nothing is
+    deleted (R-MEM-5). No new state file beyond the cursor.
+  - **Conflict routing is deterministic.** A candidate whose statement
+    token-overlap with an active fact is ≥ `MEMORY_CONFLICT_OVERLAP`
+    (default 0.5) is treated as a contradiction and routed through the
+    judge-approved **supersede** flow (§10.3): old block `valid_to` +
+    `status: superseded`, new block appended, `supersede` L2 record
+    linking old→new. `applyConflict` exposes the flow for T06.
+  - **Verifier overlap metric = |Q ∩ D| / |Q|** (fraction of candidate
+    tokens present in each supporting observation; threshold
+    `MEMORY_VERIFY_MIN_OVERLAP` 0.3). This is the "is the statement
+    supported by this record" sanity check — deterministic and
+    hand-computable for T06 (§10.5.1).
+  - **Reflection accepts two shapes.** A pre-shaped lesson
+    `{context, error, fix}` is validated and returned (provider output
+    used only when parseable — T06 shape test); raw observations
+    require the LLM and a parseable response. Reflection records are
+    `model_inferred` (§8.3).
+  - **Judge helper `judge()` accepts both the native and the T06
+    adapter call shapes** (`judge({candidate, providers, ...})` and
+    `judge({candidate}, {providers, consensus}, cfg)`).
+  - **`MEMORY_CONFLICT_OVERLAP` is a new env knob** (default 0.5) —
+    internal tuning for the supersede detector; documented in README
+    (not in the spec §11 table).
+  - **SEC-LOG-01/SEC-KEY-01..03:** providers send keys only in
+    `Authorization`/`x-goog-api-key` headers; logs are redacted via
+    `redact.ts`; L2 records store model name + verdict only; the CLI
+    reports per-model spend without keys (SEC-COST-02).
+- **Consequences:** T06 (already delivered in parallel) asserts the
+  graduation rule, verdict schema, consensus/caps with mock providers,
+  supersede and decay against this package — verified green against
+  the T06 suite (30-consolidation). T08 consumes
+  `runConsolidationJob` + `consolidationDue` for the Telegram
+  schedule/notifications; T09/T12 (v0.5) reuse `LLMProvider` +
+  `CostTracker` for the GEPA judge.
 
 ## ADR-011 — T03 core memory module: writer implementation decisions
 
