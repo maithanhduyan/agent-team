@@ -404,7 +404,7 @@ per-model spend without keys (SEC-COST-02); logs are redacted via
 
 ```bash
 npm install
-npm test          # node --test + tsx (197 tests: T03 writers + T04 tools + T05 consolidation + T08 telegram bridge)
+npm test          # node --test + tsx (199 tests: T03 writers + T04 tools + T05 consolidation + T08 telegram bridge)
 npm run typecheck # tsc --noEmit
 npm run build     # tsc -> dist/
 npm run consolidate  # run the consolidation job once (reads env)

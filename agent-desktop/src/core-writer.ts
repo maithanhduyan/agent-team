@@ -340,7 +340,15 @@ export function serializeCoreMd(doc: CoreMdDocument): string {
     return lines.join('\n');
 }
 
-/** Parse `core.md` content into a document. Missing required keys → error. */
+/**
+ * Parse `core.md` content into a document.
+ *
+ * Strict per spec §6.2 / §13 row 4: a malformed fact block — an id that
+ * is not `fact_<n>` (spec §4.2) or a block missing a required key —
+ * raises `FactBlockError` instead of being silently skipped. Silent
+ * data loss (a file parsing to 0 facts with no error) is an
+ * availability concern (spec §11) and must never happen.
+ */
 export function parseCoreMd(content: string): CoreMdDocument {
     const lines = content.split(/\r?\n/);
 
@@ -395,24 +403,41 @@ export function parseCoreMd(content: string): CoreMdDocument {
 
     for (const raw of lines) {
         const line = raw.trim();
-        const marker = /^<!--\s*(fact_\d+)\s*-->$/.exec(line);
-        if (marker) {
+
+        // A fact-block marker is any `<!-- fact_... -->` comment (§6.2);
+        // the id must be `fact_<n>` (spec §4.2). A marker with a
+        // malformed id is a parse error — never a silent skip (§13 row 4).
+        const marker = /^<!--\s*(.+?)\s*-->$/.exec(line);
+        if (marker && marker[1].startsWith('fact_')) {
             flush();
-            currentId = marker[1];
+            const id = marker[1].trim();
+            if (!FACT_ID_RE.test(id)) {
+                throw new FactBlockError(`parse error: invalid fact id "${id}" (expected fact_<n>, §4.2/§6.2)`);
+            }
+            currentId = id;
             currentTitle = '';
             continue;
         }
-        const heading = /^##\s*(fact_\d+)\s*:\s*(.+)$/.exec(line);
+
+        // A fact-block heading `## fact_...: title` (a bare `## fact_...`
+        // heading is also a block opener). The id is validated the same
+        // way — malformed ids raise instead of being dropped.
+        const heading = /^##\s*(fact_[^\s:]+)\s*:?\s*(.*)$/.exec(line);
         if (heading) {
+            const id = heading[1];
+            if (!FACT_ID_RE.test(id)) {
+                throw new FactBlockError(`parse error: invalid fact id "${id}" (expected fact_<n>, §4.2/§6.2)`);
+            }
             // The heading titles the block opened by the marker above; it
             // does not start a new block, so no flush here.
             if (currentId === null) {
                 flush();
-                currentId = heading[1];
+                currentId = id;
             }
             currentTitle = heading[2].trim();
             continue;
         }
+
         const kv = /^-\s*\*\*([a-z_]+):\*\*\s*(.*)$/.exec(line);
         if (kv && currentId !== null) {
             meta[kv[1]] = parseMetaValue(kv[1], kv[2]);
