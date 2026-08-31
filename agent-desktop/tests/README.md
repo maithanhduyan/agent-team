@@ -57,7 +57,12 @@ tests/
 
 ## CI
 
-`.github/workflows/memory-t06.yml` runs this suite on pull requests that
-touch `agent-desktop/**` (Node 20, `node tests/run-suite.mjs`). Until
-T03/T04/T05 merge, the job passes with the fixture selfcheck green and the
-implementation suites skipped.
+A GitHub Actions workflow (`.github/workflows/memory-t06.yml`) is supplied
+in the T06 PR description: it runs this suite on pull requests that touch
+`agent-desktop/**` (Node 20, `node tests/run-suite.mjs`). It is **not
+committed to the branch** because the runner's GitHub token lacks the
+`workflow` scope (GitHub refuses PAT pushes that create/update
+`.github/workflows/*`); the platform can add it when the token is
+upgraded. Until T03/T04/T05 merge, the job would pass with the fixture
+selfcheck green and the implementation suites skipped. Locally the suite
+is executed by the agent runner via `node tests/run-suite.mjs`.
