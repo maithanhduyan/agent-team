@@ -1,0 +1,21 @@
+{
+  "name": "agent-desktop",
+  "version": "0.4.0",
+  "private": true,
+  "type": "module",
+  "description": "agent-desktop memory foundation — core memory module (T03): append-only L2 writer (sessions.jsonl), L3 writer (core.md), provenance + anti-poisoning guardrails, SEC-MEM-01 render wrapper",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test test/*.test.ts",
+    "test:watch": "node --import tsx --test --watch test/*.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}
