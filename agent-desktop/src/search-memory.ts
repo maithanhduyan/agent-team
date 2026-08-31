@@ -13,6 +13,15 @@
  * - recency: exponential half-life decay (`retrieval.ts`);
  * - importance: the record's `importance` field.
  *
+ * Searchable L2 pool (spec §7.1, T06 pin — Redmine #42): **observation
+ * only**. Only records with `type: "observation"` and a non-empty
+ * `content.text` are rankable and returned by `search_memory`
+ * (`isSearchableL2Record`). Administrative/audit record types —
+ * `session_start`, `session_end`, `tool_call`, `reflection`, `candidate`,
+ * `graduation`, `rejection`, `supersede`, `decay`, `hot_promote`,
+ * `hot_demote`, `quarantine`, `consolidation`, `error` — carry no
+ * rankable observation text and must never displace observation hits.
+ *
  * Behavioral contract (spec §7.1):
  * - Active records only (`valid_from <= now`, `valid_to` open or future)
  *   unless `include_expired: true`.
@@ -200,6 +209,23 @@ export function factText(fact: FactBlock): string {
     return fact.statement;
 }
 
+/**
+ * True if an L2 record belongs to the `search_memory` searchable pool
+ * (spec §7.1, T06 pin — Redmine #42): `type: "observation"` with a
+ * non-empty `content.text`. All other L2 record types (candidate,
+ * session_end, rejection, error, quarantine, decay, reflection,
+ * supersede, graduation, tool_call, hot_promote, session_start, …) are
+ * administrative/audit records — not rankable, never returned by
+ * `search_memory`.
+ */
+export function isSearchableL2Record(record: L2Record): boolean {
+    if (record.type !== 'observation') {
+        return false;
+    }
+    const content = record.content as Record<string, unknown>;
+    return typeof content.text === 'string' && content.text.trim() !== '';
+}
+
 /** Text used for scoring an L2 record: `content.text` when present, else all content strings. */
 export function l2Text(record: L2Record): string {
     const content = record.content as Record<string, unknown>;
@@ -279,6 +305,15 @@ export async function searchMemory(
         const reader = new SessionsWriter(memoryDir, { log: options.log });
         const { records } = await reader.readAll();
         for (const record of records) {
+            // Observation-only searchable pool (§7.1, Redmine #42): only
+            // `type=observation` records with `content.text` are rankable.
+            // Non-observation records (candidate, session_end, rejection,
+            // error, quarantine, decay, reflection, supersede, graduation,
+            // tool_call, hot_promote, session_start, …) must never displace
+            // observation hits in the ranked results.
+            if (!isSearchableL2Record(record)) {
+                continue;
+            }
             if (!passesFilters(record.ts, record.valid_from, record.valid_to, record.provenance, record.session_id, v, nowMs)) {
                 continue;
             }

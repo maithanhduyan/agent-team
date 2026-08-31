@@ -6,9 +6,9 @@ import path from 'node:path';
 import { CoreWriter } from '../src/core-writer.js';
 import { DEFAULT_INJECTION_PATTERNS } from '../src/injection.js';
 import { DEFAULT_ALPHA, DEFAULT_BETA, DEFAULT_GAMMA, DEFAULT_HALF_LIFE_DAYS } from '../src/retrieval.js';
-import { SearchMemoryError, searchMemory } from '../src/search-memory.js';
+import { SearchMemoryError, isSearchableL2Record, searchMemory } from '../src/search-memory.js';
 import { SessionsWriter } from '../src/sessions-writer.js';
-import type { L2Record } from '../src/types.js';
+import type { L2Record, L2RecordType } from '../src/types.js';
 
 /** Fixed "now" for deterministic scoring (spec §7.1 determinism). */
 const NOW = '2026-09-15T00:00:00.000Z';
@@ -232,4 +232,85 @@ test('search_memory is rotation-transparent: records in archives are found (spec
 
     const out = await searchMemory(dir, { query: 'vietnamese' }, opts());
     assert.ok(out.results.some((r) => r.id === r1.record.id), 'archived record is searchable (rotation transparent)');
+});
+
+test('search_memory L2 pool is observation-only: non-observation records never rank (Redmine #42)', async (t) => {
+    const { dir } = await makeFixture();
+    t.after(() => rm(dir, { recursive: true, force: true }));
+
+    const writer = new SessionsWriter(dir, {
+        rotateBytes: 100 * 1024 * 1024,
+        injectionPatterns: [...DEFAULT_INJECTION_PATTERNS],
+        now: () => NOW_DATE,
+        log: silentLog,
+    });
+
+    const base = {
+        session_id: 'ses_x' as string | null,
+        provenance: 'tool_output' as const,
+        importance: 0.5,
+        valid_from: NOW,
+        valid_to: null,
+        source: { kind: 'model' as const, ref: 'model:test' },
+    };
+
+    // Administrative/audit record types that must never enter the
+    // searchable pool — several carry text-bearing content, which is
+    // exactly what used to let them displace observation hits.
+    const nonObservations: Array<{ id: string; type: L2RecordType; content: Record<string, unknown> }> = [
+        { id: 'evt_candidate', type: 'candidate', content: { tier: 'L3', text: 'the user prefers vietnamese for chat messages', supporting_ids: ['evt_1'] } },
+        { id: 'evt_session_start', type: 'session_start', content: { channel: 'telegram' } },
+        { id: 'evt_session_end', type: 'session_end', content: { reason: 'user', duration_s: 60 } },
+        { id: 'evt_tool_call', type: 'tool_call', content: { tool: 'search_memory', args: { query: 'vietnamese' }, ok: true } },
+        { id: 'evt_reflection', type: 'reflection', content: { context: 'vietnamese chat', error: 'parse', fix: 'retry' } },
+        { id: 'evt_rejection', type: 'rejection', content: { tier: 'L3', text: 'owner prefers vietnamese', judge: 'deepseek', verdict: 'reject', reason: 'insufficient' } },
+        { id: 'evt_graduation', type: 'graduation', content: { tier: 'L3', fact_id: 'fact_0001', judge: 'deepseek', verdict: 'approve' } },
+        { id: 'evt_supersede', type: 'supersede', content: { old_id: 'fact_0001', new_id: 'fact_0002', reason: 'update' } },
+        { id: 'evt_decay', type: 'decay', content: { fact_id: 'fact_0001', importance_before: 0.9, importance_after: 0.45, reason: 'day30' } },
+        { id: 'evt_hot_promote', type: 'hot_promote', content: { fact_id: 'fact_0001', importance: 0.9 } },
+        { id: 'evt_hot_demote', type: 'hot_demote', content: { fact_id: 'fact_0001', importance: 0.4 } },
+        { id: 'evt_quarantine', type: 'quarantine', content: { reason: 'injection_pattern', text: 'owner prefers vietnamese' } },
+        { id: 'evt_error', type: 'error', content: { code: 'provenance_missing', message: 'write rejected: provenance is mandatory' } },
+    ];
+
+    for (const r of nonObservations) {
+        const result = await writer.append({ id: r.id, ts: '2026-09-01T00:00:00.000Z', ...base, type: r.type, content: r.content });
+        assert.equal(result.status, 'written', `non-observation fixture record ${r.id} should append (schema-valid)`);
+    }
+
+    // min_score 0 + top_k 50 exposes every rankable record: any
+    // non-observation record in the pool would show up here.
+    const out = await searchMemory(dir, { query: 'owner prefers vietnamese', min_score: 0, top_k: 50 }, opts());
+    const ids = new Set(out.results.map((r) => r.id));
+    for (const r of nonObservations) {
+        assert.ok(!ids.has(r.id), `${r.id} (type=${r.type}) must not appear in search_memory results`);
+    }
+    // observation hits still rank
+    assert.ok(ids.has('evt_1'), 'observation evt_1 still ranks');
+    assert.ok(ids.has('evt_3'), 'observation evt_3 still ranks');
+});
+
+test('isSearchableL2Record: only observation records with non-empty content.text are searchable (Redmine #42)', () => {
+    const obs = (text?: unknown): L2Record => ({
+        id: 'evt_x',
+        ts: NOW,
+        session_id: null,
+        type: 'observation',
+        provenance: 'user_stated',
+        importance: 0.5,
+        valid_from: NOW,
+        valid_to: null,
+        content: (text === undefined ? { text: 'owner prefers vietnamese', kind: 'preference' } : { text, kind: 'preference' }) as L2Record['content'],
+        source: { kind: 'user', ref: 'telegram:chat:12345' },
+    });
+
+    assert.equal(isSearchableL2Record(obs()), true, 'observation with text is searchable');
+    assert.equal(isSearchableL2Record(obs('  ')), false, 'observation with blank text is not searchable');
+    assert.equal(isSearchableL2Record(obs('')), false, 'observation with empty text is not searchable');
+    assert.equal(isSearchableL2Record(obs(42)), false, 'observation with non-string text is not searchable');
+    assert.equal(isSearchableL2Record({ ...obs(), type: 'candidate' }), false, 'candidate is not searchable');
+    assert.equal(isSearchableL2Record({ ...obs(), type: 'error' }), false, 'error is not searchable');
+    assert.equal(isSearchableL2Record({ ...obs(), type: 'session_end' }), false, 'session_end is not searchable');
+    assert.equal(isSearchableL2Record({ ...obs(), type: 'rejection' }), false, 'rejection is not searchable');
+    assert.equal(isSearchableL2Record({ ...obs(), type: 'quarantine' }), false, 'quarantine is not searchable');
 });
