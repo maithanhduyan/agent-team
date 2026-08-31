@@ -19,6 +19,11 @@ orchestrator/.pnpm-store/
 # DSH skill files and harness state (mounted read-only; never commit)
 .dsh/
 
+# Harness agent instructions at the repo root (mounted per-workspace) and
+# pnpm package-manager store — never commit
+/AGENTS.md
+.pnpm-store/
+
 # Agent workspaces (keep only the .gitkeep files)
 workspaces/*/*
 !workspaces/*/.gitkeep
@@ -35,3 +40,8 @@ data/*/*
 # Reference directories
 .references/
 data/observer.log
+
+# agent-desktop — runtime memory data (created by the memory module;
+# keep the directory README, never commit session/fact data)
+agent-desktop/memory/*
+!agent-desktop/memory/README.md
