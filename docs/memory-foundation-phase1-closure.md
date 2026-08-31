@@ -57,8 +57,8 @@ T07 chạy trước artifact T03–T05):
 
 | Task | Redmine | Agent | Orchestrator | Trạng thái |
 |---|---|---|---|---|
-| T09 — Thiết kế pipeline GEPA (DSPy + GEPA Python sidecar; Node/TS tích hợp; SEC-GEPA-01..11 + ADR-009/010; fitness gate install-dsh; cost cap; judge team đa model Q5 — fallback DeepSeek) | #36 | cto | TASK-7208 | in_progress (đã dispatch) |
-| T10 — Acceptance criteria cho skill evolution (eval dataset, guardrail định lượng, PR + human review, định nghĩa "done" 1 vòng) | #37 | ba | TASK-7215 (depends_on 7208) | todo — auto-dispatch khi T09 done |
+| T09 — Thiết kế pipeline GEPA (DSPy + GEPA Python sidecar; Node/TS tích hợp; SEC-GEPA-01..11 + ADR-009/010; fitness gate install-dsh; cost cap; judge team đa model Q5 — fallback DeepSeek) | #36 | cto | TASK-7213 (sync-import) | in_progress |
+| T10 — Acceptance criteria cho skill evolution (eval dataset, guardrail định lượng, PR + human review, định nghĩa "done" 1 vòng) | #37 | ba | TASK-7214 (sync-import) | in_progress (lưu ý: sync dispatch ngay — PM rà soát vs T09 khi về) |
 
 - Cả hai gắn version **v0.5 Skill Evolution** (id 7, due 2026-10-30),
   tracker Task, relation `precedes` #36 → #37.
@@ -81,6 +81,21 @@ T07 chạy trước artifact T03–T05):
   commit resolve conflict `dc0ef94` và các merge commit ký theo quy trình
   (pm TASK-7174).
 - Orchestrator tasks: TASK-7202 (T07 re-dispatch), TASK-7203 (T06 rerun),
-  TASK-7208 (T09), TASK-7215 (T10).
+  TASK-7213 (T09, sync-import), TASK-7214 (T10, sync-import). Các task thủ công
+  7208/7215 đã xóa (trùng sync-import).
 - Redmine: #33 (T07, reopened + In Progress), #32 (T06, reopened + In
   Progress), #36 (T09, In Progress), #37 (T10, New).
+
+## 6. Bài học vận hành (quan sát thực tế)
+
+- **Orchestrator sync tự import + auto-dispatch issue mới** có subject
+  `[<agent>] ...`: tạo issue Redmine mới → sync tạo task + dispatch ngay
+  (không đợi dependency). Đúng cảnh báo "sync dispatch mọi issue mới ngay
+  lập tức" của chủ dự án ở #35 — gây T10 chạy trước T09, T07 chạy trước
+  artifact (đợt trước).
+- Khi cần **kiểm soát thứ tự**: tạo issue rồi nhanh chóng điều chỉnh qua
+  orchestrator/DB (xóa task thủ công trùng), hoặc tạo issue sau khi
+  dependency sẵn sàng. Với T09/T10: task sync-import (7213/7214) là bản
+  chính (có redmine_issue_id); task tạo tay (7208/7215) bị xóa.
+- Re-dispatch issue CŨ (#32/#33 — đã có task cũ giữ redmine_issue_id) thì
+  sync KHÔNG import lại → phải tạo orchestrator task tay (7202/7203).
