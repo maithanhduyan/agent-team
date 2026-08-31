@@ -16,7 +16,9 @@
  * in TESTING.md as a finding for T07 / product review.
  */
 import { pathToFileURL } from 'node:url';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
+import { copyFileSync, mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { findImpl } from './harness.mjs';
 import { CONTRACT } from './generate-golden.mjs';
 
@@ -189,13 +191,26 @@ export async function searchAdapter() {
       return { ...res, matches: matches.slice(0, limit), meta: { ...res.meta, count: Math.min(matches.length, limit) } };
     },
     /** T04 `loadHotFacts(memoryDir, options)` — the suite passes the
-     * core.md file path plus `env` knobs. */
-    loadHotFacts: (corePath, opts = {}) =>
-      loadHotFacts(dirname(corePath), {
+     * core.md file path plus `env` knobs. The implementation reads
+     * `<memoryDir>/core.md`; when the suite passes a different core file
+     * (`core-hot-max.md` — the MEMORY_HOT_MAX cap case), stage it as
+     * `core.md` in a temp dir so the cap is exercised against that
+     * fixture (loadHotFacts is a single-file read — nothing else is
+     * needed in the staged dir). */
+    loadHotFacts: (corePath, opts = {}) => {
+      const base = basename(corePath);
+      let memoryDir = dirname(corePath);
+      if (base !== 'core.md') {
+        const staged = mkdtempSync(join(tmpdir(), 't06-hotfacts-'));
+        copyFileSync(corePath, join(staged, 'core.md'));
+        memoryDir = staged;
+      }
+      return loadHotFacts(memoryDir, {
         minImportance: Number(opts.env?.MEMORY_HOT_IMPORTANCE ?? 0.8),
         max: Number(opts.env?.MEMORY_HOT_MAX ?? 10),
         now: () => new Date(CONTRACT.refNow),
-      }),
+      });
+    },
     /** SEC-MEM-01 render — pinned envelope + item format. */
     renderBlock: ({ kind, items }) => renderPinned(mod, kind, items),
   };
