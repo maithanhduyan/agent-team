@@ -8,12 +8,13 @@ the project architecture, or the product scope changes.
 > several PRs in parallel — PR #8 (TASK-180, demo skeleton
 > requirements) carries ADR-001…ADR-003; PR #9 (TASK-6060, memory
 > foundation) carries ADR-004…ADR-008; PR #10 (TASK-6539, T02
-> architecture & security review) adds ADR-009…ADR-010; this PR
-> (TASK-6644, T03 core memory module) adds ADR-011. On merge, keep
-> all sets; the second PR to merge reconciles the file (trivial
-> append). Per the cto ADR-ownership rule (see the TASK-179 version of
-> this file), the cto assigns final numbers on merge; working numbers
-> on branches never collide because each PR appends its own range.
+> architecture & security review) adds ADR-009…ADR-010; PR #14
+> (TASK-6644, T03 core memory module) adds ADR-011; PR #15 (TASK-6645,
+> T04 retrieval tools) adds ADR-012. On merge, keep all sets; the
+> second PR to merge reconciles the file (trivial append). Per the cto
+> ADR-ownership rule (see the TASK-179 version of this file), the cto
+> assigns final numbers on merge; working numbers on branches never
+> collide because each PR appends its own range.
 
 ## ADR-011 — T03 core memory module: writer implementation decisions
 
@@ -60,6 +61,56 @@ the project architecture, or the product scope changes.
   T06 can assert the writer contracts (R-PROV-1, quarantine, rotation
   transparency) against this package's tests. The `agent-desktop/`
   package layout is recorded in `ARCHITECTURE.md` §8 (memory subsystem).
+
+## ADR-012 — T04 retrieval tools `search_memory` + `grep_logs` + hot-fact injection
+
+- **Status:** proposed (TASK-6645 / Redmine #30; T04 — backend
+  implements spec §7.1/§7.2/§6.3/§7.3 + SEC-MEM-02)
+- **Date:** 2026-09
+- **Context:** T04 must ship the two retrieval tools, hot-fact
+  injection (0 ms), the agentic query budget and the SEC-MEM-02 prompt
+  guidance on top of the T03 writer layer. A few contract details were
+  fixed at implementation time.
+- **Decision (backend scope, T04):**
+  - **Similarity = Jaccard on lowercased word tokens**
+    (`|Q ∩ D| / |Q ∪ D|`, `\p{L}\p{N}` tokenizer keeping Vietnamese
+    diacritics). It is deterministic, bounded [0,1] and hand-computable
+    (golden-set testable within 1e-6, spec §13). The `SimilarityFn` seam
+    in `retrieval.ts` is the reserved embedding slot (§7.1).
+  - **L3 recency uses `last_observed`.** L2 scores recency from `ts`;
+    L3 has no `ts`, so `last_observed` (the Day-30 decay driver, §10.4)
+    is used — documented in the code and tests.
+  - **Weights validated to sum to 1 (hard error).** A misconfigured
+    `MEMORY_ALPHA/BETA/GAMMA` that does not sum to 1 throws at config
+    load — misconfiguration must not silently change the ranking
+    contract (§7.1).
+  - **RE2-safe subset for `grep_logs`.** JS's regex engine backtracks,
+    so `assertRe2Safe` rejects lookarounds, backreferences and nested
+    unbounded quantifiers (`(a+)+`); possessive quantifiers are invalid
+    JS and caught by compilation. The subset is deliberately
+    conservative (safe-but-unusual patterns may be rejected).
+  - **`since` semantics for raw lines.** `grep_logs(since)` filters
+    matches whose line timestamp (JSONL `ts` field, else the first ISO
+    timestamp in the line) is `>= since`; lines with no determinable
+    timestamp are excluded when `since` is set.
+  - **Meta counts = returned counts.** `search_memory.meta.hits` and
+    `grep_logs.meta.count` equal the number of results/matches returned
+    (after `top_k`/`min_score`/`limit`), so T06 can assert them
+    directly.
+  - **SEC-MEM-02 lives in `src/prompt.ts`.** `MEMORY_TRUST_GUIDANCE` +
+    `AGENTIC_RETRIEVAL_PROTOCOL` compose the session-start memory
+    section (hot-facts block included, SEC-MEM-01); the same guidance is
+    mirrored in `agents/backend/AGENTS.md`. T08 injects
+    `buildMemorySystemPrompt(...)` at session start.
+  - **Budget is a per-turn tracker, not a mechanism.** `ToolCallBudget`
+    (default `MEMORY_MAX_TOOL_CALLS_PER_TURN = 5`) counts calls and
+    throws past the cap; per §7.3 the protocol is enforced by the
+    caller (bridge/runner) around each turn's tool calls.
+- **Consequences:** T06 pins the formula (golden set), the RE2-safe
+  rejections and the filter behavior against this package's tests; T08
+  consumes `searchMemory`/`grepLogs`/`injectHotFacts`/
+  `buildMemorySystemPrompt` for the Telegram bridge; T21 (v0.5) renders
+  search results/provenance via the SEC-MEM-01 envelope.
 
 
 

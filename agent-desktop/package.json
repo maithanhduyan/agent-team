@@ -3,7 +3,7 @@
   "version": "0.4.0",
   "private": true,
   "type": "module",
-  "description": "agent-desktop memory foundation — core memory module (T03): append-only L2 writer (sessions.jsonl), L3 writer (core.md), provenance + anti-poisoning guardrails, SEC-MEM-01 render wrapper",
+  "description": "agent-desktop memory foundation — core memory module (T03): append-only L2 writer (sessions.jsonl), L3 writer (core.md), provenance + anti-poisoning guardrails, SEC-MEM-01 render wrapper; retrieval tools (T04): search_memory (α·sim+β·recency+γ·importance), grep_logs (RE2-safe), hot-fact injection, SEC-MEM-02 trust guidance, agentic query budget",
   "engines": {
     "node": ">=20"
   },
