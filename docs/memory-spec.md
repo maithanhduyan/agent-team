@@ -116,7 +116,9 @@ agent-desktop/
 ├── memory/
 │   ├── sessions.jsonl        # L2 — append-only JSONL (may rotate, see §4.5)
 │   ├── sessions-YYYYMMDD.jsonl  # rotated archives (optional, see §4.5)
-│   └── core.md               # L3 — curated fact blocks
+│   ├── core.md               # L3 — curated fact blocks
+│   ├── consolidation-cursor.json  # T05 cursor (spec §8.1; resumable runs)
+│   └── costs-YYYYMM.json     # T05 per-model judge spend/caps (spec §9.5)
 ├── skills/                   # L4 — SKILL.md + registry (v0.4: conventions only)
 └── ...
 ```
@@ -225,6 +227,7 @@ in one call; on failure, truncate the partial tail before retry).
 | `decay` | consolidation (decay job, §9.4) | `{ "fact_id": "fact_0012", "importance_before": 0.8, "importance_after": 0.4, "reason": "day30" }` |
 | `hot_promote` / `hot_demote` | consolidation | `{ "fact_id": "...", "importance": 0.9 }` |
 | `quarantine` | writer/verifier (§9.2) | `{ "reason": "injection_pattern|no_source|conflict", "text": "...", "snippet": "..." }` |
+| `consolidation` | consolidation run record (id `cons_<uuid>`, §8.1 — ADR-013) | `{ "run_id": "cons_...", "status": "ok\|error\|paused", "processed": n, "graduated": n, "rejected": n, "superseded": n, "decayed": n, "message": "..." }` |
 | `error` | any writer | `{ "code": "...", "message": "..." }` |
 
 > The `content` payload is **extensible** (additional keys allowed) but
@@ -482,8 +485,11 @@ grep_logs(
   schedule (`MEMORY_CONSOLIDATE_EVERY_MIN=360` default), or manually.
 - It processes **new L2 records since the last cursor**, then writes a
   `cons_<uuid>` run record (type `error` on failure) for auditability.
+  On success the run record has the type `consolidation` (id
+  `cons_<uuid>`, content per §5.3 — added by T05, ADR-013).
 - It is **idempotent and resumable**: if interrupted, the next run
-  resumes from the last fully-processed record.
+  resumes from the last fully-processed record (cursor file
+  `memory/consolidation-cursor.json`, survives rotation).
 
 ### 8.2 Pipeline stages
 

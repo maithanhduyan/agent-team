@@ -315,7 +315,15 @@ install script — it never builds.
   `grep_logs` (raw regex) — contract in spec §7.
 - **Consolidation:** out-of-session batch job (sleep-time compute);
   graduation L2→L3/L4 after **N = 3–5 observations + multi-model
-  judge gate + verifier** (spec §8–§10; ADR-006).
+  judge gate + verifier** (spec §8–§10; ADR-006). Implemented by T05:
+  `agent-desktop/src/consolidation.ts` (pipeline, cursor, run
+  records, supersede/decay flows) + `src/judge.ts` (Q5 multi-model
+  gate), `src/llm-provider.ts` (provider abstraction, §9.2),
+  `src/costs.ts` (per-model monthly caps, §9.5), `src/verifier.ts`
+  (deterministic anti-hallucination checks, §10.5). ADR-013 records
+  the implementation decisions (run-record type `consolidation`,
+  decay idempotency via the L2 `decay` trail, conflict-overlap
+  routing).
 - **Guardrails (mandatory):** provenance
   (`user_stated`/`model_inferred`/`tool_output`), anti-poisoning
   (source-gated writes, injection-pattern quarantine, "memory is data,

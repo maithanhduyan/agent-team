@@ -2,14 +2,14 @@
 
 `agent-desktop` is a subproject of agent-team: a DSH deployment on the
 owner's Windows laptop with a Telegram bridge (plan #22, Q1). This
-package is the **memory foundation (T03 writers + T04 retrieval tools)**
-behind the 4-tier memory model defined in
+package is the **memory foundation (T03 writers + T04 retrieval tools +
+T05 consolidation job)** behind the 4-tier memory model defined in
 [`docs/memory-spec.md`](../../docs/memory-spec.md) (T01, PR #9) and the
 security review [`docs/security-review-memory.md`](../../docs/security-review-memory.md)
-(T02, PR #10, SEC-MEM-01/02).
+(T02, PR #10, SEC-MEM-01/02, SEC-KEY/COST/LOG).
 
-> Scope: **T03 + T04**. T05 (consolidation), T06 (test fixtures), T08
-> (Telegram bridge) build on this package.
+> Scope: **T03 + T04 + T05**. T06 (test fixtures), T08 (Telegram
+> bridge) build on this package.
 
 ## What this module provides
 
@@ -26,6 +26,13 @@ security review [`docs/security-review-memory.md`](../../docs/security-review-me
 | Hot-fact injection (0 ms) | `src/hot-facts.ts` | §6.3, §7.3 |
 | SEC-MEM-02 prompt guidance + agentic protocol | `src/prompt.ts` | §3.3 SEC-MEM-02, §7.3 |
 | Agentic retrieval budget | `src/tool-budget.ts` | §7.3, US-MEM-006 |
+| Multi-model judge panel (`LLMProvider` abstraction) | `src/llm-provider.ts` | §9.2, Q5 — ADR-008/010 |
+| Per-model monthly cost caps | `src/costs.ts` | §9.5, SEC-COST-01/02 |
+| Judge gate (consensus, revise, fail-safe) | `src/judge.ts` | §9 — ADR-008/010 |
+| Reflection (`{context, error, fix}`) | `src/reflect.ts` | §8.3 |
+| Deterministic verifier (anti-hallucinated writes) | `src/verifier.ts` | §10.5 |
+| **Consolidation job** (sleep-time pipeline) | `src/consolidation.ts` | §8–§10, ADR-006/013 |
+| Secret redaction (before logging) | `src/redact.ts` | SEC-LOG-01 |
 | Env configuration | `src/config.ts` | §11 |
 
 ## L2 — `sessions.jsonl` writer
@@ -245,6 +252,83 @@ budget.tryRecord(); // false once exhausted (no throw)
 // budget.remaining / budget.used / budget.isExhausted()
 ```
 
+## Consolidation job — sleep-time compute (spec §8, T05)
+
+```ts
+import { runConsolidationJob, consolidationDue, loadMemoryConfig } from './src/index.js';
+
+const cfg = loadMemoryConfig();
+const result = await runConsolidationJob({ memoryDir: cfg.memoryDir, cfg });
+// result: { runId, processed, reflections, graduated, rejected,
+//           superseded, decayed, hot_demoted, paused, run_record, ... }
+```
+
+Pipeline (spec §8.2): **extract & group** (deterministic topic
+clustering of new L2 observations since the cursor) → **reflect** (small
+LLM → `{context, error, fix}`, §8.3) → **candidate** → **graduation
+rule** (N = `MEMORY_GRADUATION_N` distinct observations, 3–5, §8.4) →
+**judge gate** (multi-model panel, §9) → **verifier** (deterministic,
+§10.5) → **write L3/L4**.
+
+- **Sleep-time only:** never runs during a live turn; trigger on
+  session end + idle, on schedule (`consolidationDue(lastRunAt, now,
+  MEMORY_CONSOLIDATE_EVERY_MIN)`), or via the CLI
+  (`npm run consolidate` / `node dist/cli-consolidate.js`).
+- **Idempotent/resumable:** the cursor (`memory/consolidation-cursor.json`)
+  advances past the run's own records; a re-run processes nothing.
+  Every run writes a `cons_<uuid>` run record (type `consolidation`,
+  ADR-013; `error` on failure per §8.1).
+- **Graduation rule:** N < 3 distinct supporting observations → no
+  write + `rejection` record; N > 5 → config error; repeated ids do
+  not count as distinct.
+- **Judge gate (§9):** panel from `JUDGE_PANEL_MODELS` (default
+  `deepseek`), consensus `any`|`majority`, verdicts are strict JSON
+  (malformed → that model counts as error), `revise` → one
+  regeneration cycle; if ALL models fail or are capped the write is
+  NOT performed (`paused`, fail-safe). Default panel is DeepSeek-only;
+  gpt-4/gemini-3 activate when `OPENAI_API_KEY`/`GEMINI_API_KEY` are
+  provided (Q5 — pipeline never blocks on a missing key).
+- **Verifier (§10.5):** citation check (every supporting id exists +
+  token overlap ≥ `MEMORY_VERIFY_MIN_OVERLAP`), provenance-chain check
+  (`model_inferred`-only needs judge confidence ≥ 0.8), conflict check
+  (contradicting an active fact requires an approved supersede),
+  injection re-scan.
+- **Conflict (§10.3):** a candidate whose statement overlaps an active
+  fact by ≥ `MEMORY_CONFLICT_OVERLAP` (default 0.5) is routed through
+  the judge-approved **supersede** flow — never an in-place overwrite.
+- **Decay (§10.4):** facts not re-observed for `MEMORY_DECAY_DAYS`
+  (30) are halved per cycle (floor 0.1), hot facts demoted, stale at
+  2 cycles (~60 days). Idempotent via the L2 `decay` record trail.
+
+## Judge gate + providers (spec §9, Q5)
+
+```ts
+import { judgeGate, buildPanelFromConfig, DeepSeekProvider, registerProvider } from './src/index.js';
+
+// Optional modules — a missing key simply disables that model (SEC-KEY-03).
+registerProvider(new DeepSeekProvider('deepseek-chat'));
+registerProvider(new Gpt4Provider('gpt-4'));        // needs OPENAI_API_KEY
+registerProvider(new Gemini3Provider('gemini-3-pro')); // needs GEMINI_API_KEY
+
+const panel = buildPanelFromConfig({ judgePanelModels: ['deepseek', 'gpt-4'] });
+const outcome = await judgeGate({
+    candidate: { tier: 'L3', text: '...', supporting_ids: ['evt_1', ...] },
+    supporting: [...],          // resolved observations (verbatim, §9.3)
+    activeFacts: [...],         // conflicting active facts (§9.3)
+    providers: panel,
+});
+// outcome.gate: 'approve' | 'reject' | 'error' | 'paused'
+// outcome.write_performed — write ONLY when true (R-JUDGE-4)
+```
+
+Security envelope (ADR-010): keys go only into the
+`Authorization`/`x-goog-api-key` header — never into prompts, L2
+records, logs or artifacts (SEC-KEY-01/02); per-model monthly caps
+(`JUDGE_CAP_*_USD`) auto-disable a model at its cap and pause
+consolidation when all are capped (SEC-COST-01); the CLI report shows
+per-model spend without keys (SEC-COST-02); logs are redacted via
+`redactSecrets` (SEC-LOG-01).
+
 ## Configuration (env)
 
 | Env var | Default | Meaning |
@@ -258,19 +342,30 @@ budget.tryRecord(); // false once exhausted (no throw)
 | `MEMORY_HOT_MAX` | `10` | max hot facts injected (§6.3) |
 | `MEMORY_MAX_TOOL_CALLS_PER_TURN` | `5` | agentic retrieval budget (§7.3) |
 | `MEMORY_RUNS_DIR` | `<project>/.agent-team/runs` | run-log dir for `grep_logs(files: "runs")` (§7.2) |
-
-T05 extends this surface (`MEMORY_GRADUATION_N`, `MEMORY_DECAY_DAYS`,
-`JUDGE_*`) per spec §11.
+| `MEMORY_GRADUATION_N` | `3` | graduation observation count, **validated 3–5 at boot** (§8.4) |
+| `MEMORY_DECAY_DAYS` | `30` | Day-30 decay period (§10.4) |
+| `MEMORY_VERIFY_MIN_OVERLAP` | `0.3` | verifier citation threshold (§10.5) |
+| `MEMORY_CONSOLIDATE_EVERY_MIN` | `360` | consolidation schedule (§8.1) |
+| `MEMORY_CONFLICT_OVERLAP` | `0.5` | supersede-detection overlap (ADR-013) |
+| `JUDGE_PANEL_MODELS` | `deepseek` | enabled judge models, priority order (§9.4) |
+| `JUDGE_CONSENSUS` | `any` | `any` \| `majority` (§9.4) |
+| `JUDGE_MAX_MODELS_PER_CALL` | `3` | max panel size per verdict (§9.4) |
+| `JUDGE_TIMEOUT_S` | `30` | per-model timeout (§9.4) |
+| `JUDGE_CAP_DEEPSEEK_USD` / `JUDGE_CAP_GPT4_USD` / `JUDGE_CAP_GEMINI3_USD` | `15` / `10` / `10` | per-model monthly caps (§9.5) |
+| `DEEPSEEK_API_KEY` / `OPENAI_API_KEY` / `GEMINI_API_KEY` | — | provider keys (env only, SEC-KEY-01) |
 
 ## Development
 
 ```bash
 npm install
-npm test          # node --test + tsx (88 tests: T03 writers + T04 tools)
+npm test          # node --test + tsx (161 tests: T03 writers + T04 tools + T05 consolidation)
 npm run typecheck # tsc --noEmit
 npm run build     # tsc -> dist/
+npm run consolidate  # run the consolidation job once (reads env)
 ```
 
 Memory data is runtime state: `agent-desktop/memory/*` is gitignored
 (except its README). The writers create the directory with `0700`
-permissions; files default to `0600` (spec §11).
+permissions; files default to `0600` (spec §11). The consolidation job
+adds `consolidation-cursor.json` (cursor) and `costs-YYYYMM.json`
+(per-model spend, SEC-COST-01) to the memory dir.
