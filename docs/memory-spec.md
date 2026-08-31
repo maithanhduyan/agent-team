@@ -337,7 +337,7 @@ lines are the machine-readable metadata. **Required keys:**
   L2); a new block is appended (see §9.3).
 - **R-CORE-4:** `observation_count >= 3` (default N, configurable 3–5)
   plus a judge-gate approval is required before a block can be created
-  (see §7.3).
+  (see §8.4 and §9).
 
 ### 6.3 Hot facts
 
