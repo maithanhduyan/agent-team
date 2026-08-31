@@ -610,6 +610,46 @@ the project architecture, or the product scope changes.
   `valid_from` to `last_observed`; `agent-desktop/README.md` already
   documents "L3 recency uses `last_observed`, L2 uses `ts`".
 
+### ADR-005 addendum — search_memory L2 pool is observation-only + provenance_missing audit code (Redmine #42)
+
+- **Status:** accepted (TASK-7805 / Redmine #42; backend bugfix for the
+  T06 verify of Redmine #41 — implements the T06-pinned contract, no
+  public API change)
+- **Date:** 2026-09
+- **Context:** T06 verify (Redmine #41, TESTING.md F3/F5 evidence)
+  showed `search_memory` scoring **every** L2 record type while the
+  pinned contract (spec §7.1 + `generate-golden.mjs`) is
+  observation-only: searchable L2 records are those with
+  `content.text` (`type: "observation"`). Non-observation records carry
+  payloads that can look like text (e.g. a `candidate`'s proposed
+  statement, a `rejection`'s `text`), so they ranked and **displaced
+  golden observation hits** — measured at rank 3: `evt_…0012`
+  (candidate, impl 0.532527) vs `evt_…0015` (observation, golden
+  0.526964). Separately, the T03 writer audited every schema rejection
+  with the generic `content.code: "schema_invalid"`, while spec §13 row
+  1 and fixture `write-attempts.json` att-1 pin the specific
+  `provenance_missing` code for R-PROV-1 rejections (write without a
+  valid provenance tag).
+- **Decision (backend scope):**
+  - `search_memory` L2 candidates are filtered by
+    `isSearchableL2Record`: `type === "observation"` **and** non-empty
+    `content.text`. All other L2 record types (`session_start`,
+    `session_end`, `tool_call`, `reflection`, `candidate`, `graduation`,
+    `rejection`, `supersede`, `decay`, `hot_promote`/`hot_demote`,
+    `quarantine`, `consolidation`, `error`) are administrative/audit
+    records — never rankable, never returned. Spec §7.1 + §13 updated to
+    pin this.
+  - The writer's rejection audit uses `content.code: "provenance_missing"`
+    with message `write rejected: provenance is mandatory` when the
+    record has no valid provenance tag (R-PROV-1, §4.3/§10.1); all other
+    schema failures keep the generic `schema_invalid`.
+- **Consequences:** golden-search.json and the T06 suite need no change
+  (the golden was already generated on the observation-only pool);
+  `10-writer` row 1 and `20-search` rows 6/7 go green on the merged
+  implementation. Non-observation records remain fully queryable via
+  `grep_logs` (§7.2) — this decision only affects ranked `search_memory`
+  results.
+
 ## ADR-004 — Memory data contract: `core.md` + `sessions.jsonl`
 
 - **Status:** accepted (TASK-6060 / Redmine #25; plan #22 T01, Q1)

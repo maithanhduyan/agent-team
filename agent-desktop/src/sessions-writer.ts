@@ -28,7 +28,7 @@ import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { validateL2Record } from './schema.js';
 import { DEFAULT_INJECTION_PATTERNS, scanForInjection } from './injection.js';
-import type { L2Record, L2RecordType } from './types.js';
+import { PROVENANCE_VALUES, type L2Record, type L2RecordType } from './types.js';
 
 /** Result of an `append` call. */
 export type AppendResult =
@@ -148,10 +148,21 @@ export class SessionsWriter {
 
         const validation = validateL2Record(normalized);
         if (!validation.ok || !validation.record) {
+            // R-PROV-1 (spec §4.3 / §10.1, §13 row 1): a write rejected
+            // because the record has no valid provenance tag is audited
+            // with the dedicated `provenance_missing` code (fixture
+            // write-attempts att-1 pins `code: "provenance_missing"`,
+            // message "write rejected: provenance is mandatory") — not the
+            // generic `schema_invalid` (Redmine #42 / F1′).
+            const provenanceMissing = this.hasMissingProvenance(normalized);
             const audit = this.auditRecord(
                 'error',
-                { code: 'schema_invalid', message: validation.errors.join('; ') },
-                'rejected record that failed schema validation',
+                provenanceMissing
+                    ? { code: 'provenance_missing', message: 'write rejected: provenance is mandatory' }
+                    : { code: 'schema_invalid', message: validation.errors.join('; ') },
+                provenanceMissing
+                    ? 'rejected record: provenance is mandatory (R-PROV-1, spec §4.3/§10.1)'
+                    : 'rejected record that failed schema validation',
             );
             await this.appendLine(audit);
             await this.maybeRotate();
@@ -201,6 +212,20 @@ export class SessionsWriter {
         }
         const kind = (source as Record<string, unknown>).kind;
         return kind === 'user' || kind === 'tool' || kind === 'model' || kind === 'bridge';
+    }
+
+    /**
+     * True when a record was rejected because it carries no valid
+     * provenance tag (R-PROV-1, spec §4.3 / §10.1): `provenance` missing
+     * or not one of `user_stated | model_inferred | tool_output`. Used to
+     * pick the dedicated audit `content.code = "provenance_missing"` over
+     * the generic `schema_invalid` (spec §13 row 1, fixture att-1).
+     */
+    private hasMissingProvenance(input: unknown): boolean {
+        if (typeof input !== 'object' || input === null || Array.isArray(input)) {
+            return false; // not even a record — generic schema failure
+        }
+        return !PROVENANCE_VALUES.includes((input as Record<string, unknown>).provenance as L2Record['provenance']);
     }
 
     /** Build a writer-generated audit record (error or quarantine). */

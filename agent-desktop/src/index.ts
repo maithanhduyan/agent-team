@@ -103,6 +103,7 @@ export {
     searchMemory,
     validateSearchParams,
     isActiveAt,
+    isSearchableL2Record,
     l2Text,
     factText,
     SearchMemoryError,

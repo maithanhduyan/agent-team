@@ -111,6 +111,58 @@ test('record without provenance is rejected and an error audit record is written
     assert.ok(!raw.includes('The owner prefers Vietnamese'));
 });
 
+test('audit content.code is provenance_missing when provenance is absent (F1′, §13 row 1 + fixture att-1)', async (t) => {
+    const { dir, writer } = await makeWriter();
+    t.after(() => rm(dir, { recursive: true, force: true }));
+
+    const { provenance, ...noProvenance } = obs();
+    void provenance;
+    const result = await writer.append(noProvenance);
+    assert.equal(result.status, 'rejected');
+    if (result.status !== 'rejected') return;
+
+    // In-memory audit result pins the dedicated code + message.
+    const content = result.audit.content as { code: string; message: string };
+    assert.equal(content.code, 'provenance_missing');
+    assert.equal(content.message, 'write rejected: provenance is mandatory');
+
+    // The persisted artifact matches the fixture pin exactly
+    // (write-attempts.json att-1: type error, content.code
+    // provenance_missing).
+    const raw = await readFile(path.join(dir, 'sessions.jsonl'), 'utf8');
+    const lines = raw.trim().split('\n').filter((l) => l.trim() !== '');
+    const last = JSON.parse(lines[lines.length - 1]) as L2Record;
+    assert.equal(last.type, 'error');
+    assert.equal((last.content as { code: string }).code, 'provenance_missing');
+    assert.equal((last.content as { message: string }).message, 'write rejected: provenance is mandatory');
+});
+
+test('an invalid provenance value is also audited as provenance_missing (R-PROV-1)', async (t) => {
+    const { dir, writer } = await makeWriter();
+    t.after(() => rm(dir, { recursive: true, force: true }));
+
+    const result = await writer.append(obs({ provenance: 'bogus' as never }));
+    assert.equal(result.status, 'rejected');
+    if (result.status !== 'rejected') return;
+    assert.equal((result.audit.content as { code: string }).code, 'provenance_missing');
+    assert.equal((result.audit.content as { message: string }).message, 'write rejected: provenance is mandatory');
+});
+
+test('non-provenance schema failures keep the generic schema_invalid audit code', async (t) => {
+    const { dir, writer } = await makeWriter();
+    t.after(() => rm(dir, { recursive: true, force: true }));
+
+    // Observation missing its `content` entirely — schema-invalid for a
+    // reason unrelated to provenance, so the audit stays schema_invalid.
+    const { content, ...noContent } = obs();
+    void content;
+    const result = await writer.append(noContent);
+    assert.equal(result.status, 'rejected');
+    if (result.status !== 'rejected') return;
+    assert.ok(result.errors.length > 0);
+    assert.equal((result.audit.content as { code: string }).code, 'schema_invalid');
+});
+
 test('record without a verifiable source is quarantined (no_source, §10.2.1)', async (t) => {
     const { dir, writer } = await makeWriter();
     t.after(() => rm(dir, { recursive: true, force: true }));
