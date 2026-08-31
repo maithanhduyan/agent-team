@@ -222,7 +222,7 @@ async function runSandboxCycle(): Promise<void> {
             });
             return { matches: out.matches, meta: out.meta };
         },
-        hotFacts: async () => loadHotFacts(memoryDir, { minImportance: memCfg.hotImportance, max: memCfg.hotMax }),
+        hotFacts: async () => loadHotFacts(memoryDir, { minImportance: memCfg.hotImportance, max: memCfg.hotMax, decayDays: memCfg.decayDays }),
         spend: () => cost.summary(),
     };
     const bridge = new TelegramBridge({
@@ -312,7 +312,7 @@ async function runLiveLoop(): Promise<void> {
                 });
                 return { matches: out.matches, meta: out.meta };
             },
-            hotFacts: async () => loadHotFacts(memCfg.memoryDir, { minImportance: memCfg.hotImportance, max: memCfg.hotMax }),
+            hotFacts: async () => loadHotFacts(memCfg.memoryDir, { minImportance: memCfg.hotImportance, max: memCfg.hotMax, decayDays: memCfg.decayDays }),
             spend: () => cost.summary(),
         },
         costTracker: cost,
