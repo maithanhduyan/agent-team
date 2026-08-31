@@ -15,6 +15,11 @@
  * `observation`); records without text are not rankable and are
  * excluded from `search_memory` results (T06 pinned contract note).
  *
+ * Recency anchor (Redmine #40 pin, TASK-7438 / ADR-005 addendum):
+ * L2 uses `record.ts`, L3 (no `ts` field) uses `fact.last_observed` —
+ * the same anchor the T04 implementation uses (search-memory.ts
+ * `l3Candidate`), so the golden and the implementation agree.
+ *
  * Output: agent-desktop/tests/fixtures/golden-search.json and
  * agent-desktop/tests/fixtures/grep-golden.json (both committed).
  * The fixture selfcheck (00-fixture-selfcheck.test.mjs) re-runs this
@@ -39,6 +44,11 @@ export const CONTRACT = {
   minScoreDefault: 0.1,
   topKDefault: 10,
   metric: 'jaccard-token-set-lowercased',
+  // Redmine #40 pin (TASK-7438): L3 has no `ts` — recency is anchored on
+  // `last_observed` (the Day-30 decay driver, spec §10.4), matching the
+  // T04 implementation (search-memory.ts l3Candidate). L2 anchors on
+  // `record.ts` (ADR-012 / ADR-005 addendum).
+  l3RecencyAnchor: 'last_observed',
 };
 
 const REF_NOW = Date.parse(CONTRACT.refNow);
@@ -117,7 +127,7 @@ const l3 = facts
   .map((f) => ({
     id: f.id,
     tier: 'L3',
-    ts: f.valid_from,
+    ts: f.last_observed, // recency anchor = last_observed (Redmine #40 pin)
     provenance: f.provenance,
     importance: parseFloat(f.importance),
     valid_from: f.valid_from,
@@ -163,7 +173,7 @@ export function loadSearchablePool() {
     .map((f) => ({
       id: f.id,
       tier: 'L3',
-      ts: f.valid_from,
+      ts: f.last_observed, // recency anchor = last_observed (Redmine #40 pin)
       provenance: f.provenance,
       importance: parseFloat(f.importance),
       valid_from: f.valid_from,

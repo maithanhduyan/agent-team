@@ -11,6 +11,7 @@
     "minScoreDefault": 0.1,
     "topKDefault": 10,
     "metric": "jaccard-token-set-lowercased",
+    "l3RecencyAnchor": "last_observed",
     "generatedBy": "agent-desktop/tests/lib/generate-golden.mjs"
   },
   "query": "user prefers vietnamese chat messages",
@@ -67,6 +68,32 @@
           "score": 0.5269644952518695
         },
         {
+          "id": "fact_0001",
+          "tier": "L3",
+          "ts": "2026-08-31T12:00:00.000Z",
+          "provenance": "user_stated",
+          "importance": 0.9,
+          "valid_from": "2026-08-01T08:00:00.000Z",
+          "valid_to": null,
+          "status": "active",
+          "text": "The owner communicates with the agent in Vietnamese.",
+          "session_id": null,
+          "score": 0.5220087515604144
+        },
+        {
+          "id": "fact_0002",
+          "tier": "L3",
+          "ts": "2026-08-30T08:00:00.000Z",
+          "provenance": "user_stated",
+          "importance": 0.85,
+          "valid_from": "2026-08-10T08:00:00.000Z",
+          "valid_to": null,
+          "status": "active",
+          "text": "The owner prefers English for technical documentation.",
+          "session_id": null,
+          "score": 0.504121696522789
+        },
+        {
           "id": "evt_a1b2c3d4e5f60016",
           "tier": "L2",
           "ts": "2026-08-23T10:00:00.000Z",
@@ -91,6 +118,19 @@
           "score": 0.4565542061058689
         },
         {
+          "id": "fact_0009",
+          "tier": "L3",
+          "ts": "2026-08-31T12:00:00.000Z",
+          "provenance": "user_stated",
+          "importance": 0.8,
+          "valid_from": "2026-08-29T00:00:00.000Z",
+          "valid_to": null,
+          "status": "active",
+          "text": "The owner's timezone is UTC+9.",
+          "session_id": null,
+          "score": 0.4565542061058689
+        },
+        {
           "id": "evt_a1b2c3d4e5f60005",
           "tier": "L2",
           "ts": "2026-08-31T00:00:00.000Z",
@@ -101,44 +141,6 @@
           "text": "vietnamese food delivery app preferences",
           "session_id": "ses_a1b2c3d4e5f60001",
           "score": 0.4487035460858293
-        },
-        {
-          "id": "fact_0009",
-          "tier": "L3",
-          "ts": "2026-08-29T00:00:00.000Z",
-          "provenance": "user_stated",
-          "importance": 0.8,
-          "valid_from": "2026-08-29T00:00:00.000Z",
-          "valid_to": null,
-          "status": "active",
-          "text": "The owner's timezone is UTC+9.",
-          "session_id": null,
-          "score": 0.43990989746104225
-        },
-        {
-          "id": "evt_a1b2c3d4e5f60014",
-          "tier": "L2",
-          "ts": "2026-08-21T09:00:00.000Z",
-          "provenance": "user_stated",
-          "importance": 0.7,
-          "valid_from": "2026-08-21T09:00:00.000Z",
-          "valid_to": null,
-          "text": "owner writes in vietnamese",
-          "session_id": "ses_d4e5f6a7b8c90004",
-          "score": 0.4371964197611661
-        },
-        {
-          "id": "fact_0004",
-          "tier": "L3",
-          "ts": "2026-08-26T10:00:00.000Z",
-          "provenance": "tool_output",
-          "importance": 0.8,
-          "valid_from": "2026-08-26T10:00:00.000Z",
-          "valid_to": null,
-          "status": "active",
-          "text": "The install-dsh script must copy files with decrypted content on EFS-encrypted directories.",
-          "session_id": null,
-          "score": 0.4236915589291804
         }
       ]
     },
@@ -208,6 +210,32 @@
           "score": 0.5269644952518695
         },
         {
+          "id": "fact_0001",
+          "tier": "L3",
+          "ts": "2026-08-31T12:00:00.000Z",
+          "provenance": "user_stated",
+          "importance": 0.9,
+          "valid_from": "2026-08-01T08:00:00.000Z",
+          "valid_to": null,
+          "status": "active",
+          "text": "The owner communicates with the agent in Vietnamese.",
+          "session_id": null,
+          "score": 0.5220087515604144
+        },
+        {
+          "id": "fact_0002",
+          "tier": "L3",
+          "ts": "2026-08-30T08:00:00.000Z",
+          "provenance": "user_stated",
+          "importance": 0.85,
+          "valid_from": "2026-08-10T08:00:00.000Z",
+          "valid_to": null,
+          "status": "active",
+          "text": "The owner prefers English for technical documentation.",
+          "session_id": null,
+          "score": 0.504121696522789
+        },
+        {
           "id": "evt_a1b2c3d4e5f60016",
           "tier": "L2",
           "ts": "2026-08-23T10:00:00.000Z",
@@ -232,21 +260,9 @@
           "score": 0.4565542061058689
         },
         {
-          "id": "evt_a1b2c3d4e5f60005",
-          "tier": "L2",
-          "ts": "2026-08-31T00:00:00.000Z",
-          "provenance": "model_inferred",
-          "importance": 0.5,
-          "valid_from": "2026-08-31T00:00:00.000Z",
-          "valid_to": null,
-          "text": "vietnamese food delivery app preferences",
-          "session_id": "ses_a1b2c3d4e5f60001",
-          "score": 0.4487035460858293
-        },
-        {
           "id": "fact_0009",
           "tier": "L3",
-          "ts": "2026-08-29T00:00:00.000Z",
+          "ts": "2026-08-31T12:00:00.000Z",
           "provenance": "user_stated",
           "importance": 0.8,
           "valid_from": "2026-08-29T00:00:00.000Z",
@@ -254,19 +270,7 @@
           "status": "active",
           "text": "The owner's timezone is UTC+9.",
           "session_id": null,
-          "score": 0.43990989746104225
-        },
-        {
-          "id": "evt_a1b2c3d4e5f60014",
-          "tier": "L2",
-          "ts": "2026-08-21T09:00:00.000Z",
-          "provenance": "user_stated",
-          "importance": 0.7,
-          "valid_from": "2026-08-21T09:00:00.000Z",
-          "valid_to": null,
-          "text": "owner writes in vietnamese",
-          "session_id": "ses_d4e5f6a7b8c90004",
-          "score": 0.4371964197611661
+          "score": 0.4565542061058689
         }
       ]
     },
@@ -397,6 +401,32 @@
           "score": 0.5269644952518695
         },
         {
+          "id": "fact_0001",
+          "tier": "L3",
+          "ts": "2026-08-31T12:00:00.000Z",
+          "provenance": "user_stated",
+          "importance": 0.9,
+          "valid_from": "2026-08-01T08:00:00.000Z",
+          "valid_to": null,
+          "status": "active",
+          "text": "The owner communicates with the agent in Vietnamese.",
+          "session_id": null,
+          "score": 0.5220087515604144
+        },
+        {
+          "id": "fact_0002",
+          "tier": "L3",
+          "ts": "2026-08-30T08:00:00.000Z",
+          "provenance": "user_stated",
+          "importance": 0.85,
+          "valid_from": "2026-08-10T08:00:00.000Z",
+          "valid_to": null,
+          "status": "active",
+          "text": "The owner prefers English for technical documentation.",
+          "session_id": null,
+          "score": 0.504121696522789
+        },
+        {
           "id": "evt_a1b2c3d4e5f60024",
           "tier": "L2",
           "ts": "2026-08-31T12:00:00.000Z",
@@ -411,7 +441,7 @@
         {
           "id": "fact_0009",
           "tier": "L3",
-          "ts": "2026-08-29T00:00:00.000Z",
+          "ts": "2026-08-31T12:00:00.000Z",
           "provenance": "user_stated",
           "importance": 0.8,
           "valid_from": "2026-08-29T00:00:00.000Z",
@@ -419,7 +449,7 @@
           "status": "active",
           "text": "The owner's timezone is UTC+9.",
           "session_id": null,
-          "score": 0.43990989746104225
+          "score": 0.4565542061058689
         },
         {
           "id": "evt_a1b2c3d4e5f60014",
@@ -432,32 +462,6 @@
           "text": "owner writes in vietnamese",
           "session_id": "ses_d4e5f6a7b8c90004",
           "score": 0.4371964197611661
-        },
-        {
-          "id": "fact_0002",
-          "tier": "L3",
-          "ts": "2026-08-10T08:00:00.000Z",
-          "provenance": "user_stated",
-          "importance": 0.85,
-          "valid_from": "2026-08-10T08:00:00.000Z",
-          "valid_to": null,
-          "status": "active",
-          "text": "The owner prefers English for technical documentation.",
-          "session_id": null,
-          "score": 0.3973034554765771
-        },
-        {
-          "id": "fact_0001",
-          "tier": "L3",
-          "ts": "2026-08-01T08:00:00.000Z",
-          "provenance": "user_stated",
-          "importance": 0.9,
-          "valid_from": "2026-08-01T08:00:00.000Z",
-          "valid_to": null,
-          "status": "active",
-          "text": "The owner communicates with the agent in Vietnamese.",
-          "session_id": null,
-          "score": 0.3731617583947101
         },
         {
           "id": "evt_a1b2c3d4e5f60019",
@@ -474,7 +478,7 @@
         {
           "id": "fact_0005",
           "tier": "L3",
-          "ts": "2026-07-01T07:00:00.000Z",
+          "ts": "2026-07-01T07:05:00.000Z",
           "provenance": "user_stated",
           "importance": 0.9,
           "valid_from": "2026-07-01T07:00:00.000Z",
@@ -482,7 +486,7 @@
           "status": "active",
           "text": "The owner drinks tea every morning.",
           "session_id": null,
-          "score": 0.25209734591303784
+          "score": 0.2521031301811736
         }
       ]
     },
@@ -540,6 +544,32 @@
           "score": 0.5269644952518695
         },
         {
+          "id": "fact_0001",
+          "tier": "L3",
+          "ts": "2026-08-31T12:00:00.000Z",
+          "provenance": "user_stated",
+          "importance": 0.9,
+          "valid_from": "2026-08-01T08:00:00.000Z",
+          "valid_to": null,
+          "status": "active",
+          "text": "The owner communicates with the agent in Vietnamese.",
+          "session_id": null,
+          "score": 0.5220087515604144
+        },
+        {
+          "id": "fact_0002",
+          "tier": "L3",
+          "ts": "2026-08-30T08:00:00.000Z",
+          "provenance": "user_stated",
+          "importance": 0.85,
+          "valid_from": "2026-08-10T08:00:00.000Z",
+          "valid_to": null,
+          "status": "active",
+          "text": "The owner prefers English for technical documentation.",
+          "session_id": null,
+          "score": 0.504121696522789
+        },
+        {
           "id": "evt_a1b2c3d4e5f60016",
           "tier": "L2",
           "ts": "2026-08-23T10:00:00.000Z",
@@ -564,6 +594,19 @@
           "score": 0.4565542061058689
         },
         {
+          "id": "fact_0009",
+          "tier": "L3",
+          "ts": "2026-08-31T12:00:00.000Z",
+          "provenance": "user_stated",
+          "importance": 0.8,
+          "valid_from": "2026-08-29T00:00:00.000Z",
+          "valid_to": null,
+          "status": "active",
+          "text": "The owner's timezone is UTC+9.",
+          "session_id": null,
+          "score": 0.4565542061058689
+        },
+        {
           "id": "evt_a1b2c3d4e5f60005",
           "tier": "L2",
           "ts": "2026-08-31T00:00:00.000Z",
@@ -574,44 +617,6 @@
           "text": "vietnamese food delivery app preferences",
           "session_id": "ses_a1b2c3d4e5f60001",
           "score": 0.4487035460858293
-        },
-        {
-          "id": "fact_0009",
-          "tier": "L3",
-          "ts": "2026-08-29T00:00:00.000Z",
-          "provenance": "user_stated",
-          "importance": 0.8,
-          "valid_from": "2026-08-29T00:00:00.000Z",
-          "valid_to": null,
-          "status": "active",
-          "text": "The owner's timezone is UTC+9.",
-          "session_id": null,
-          "score": 0.43990989746104225
-        },
-        {
-          "id": "evt_a1b2c3d4e5f60014",
-          "tier": "L2",
-          "ts": "2026-08-21T09:00:00.000Z",
-          "provenance": "user_stated",
-          "importance": 0.7,
-          "valid_from": "2026-08-21T09:00:00.000Z",
-          "valid_to": null,
-          "text": "owner writes in vietnamese",
-          "session_id": "ses_d4e5f6a7b8c90004",
-          "score": 0.4371964197611661
-        },
-        {
-          "id": "fact_0004",
-          "tier": "L3",
-          "ts": "2026-08-26T10:00:00.000Z",
-          "provenance": "tool_output",
-          "importance": 0.8,
-          "valid_from": "2026-08-26T10:00:00.000Z",
-          "valid_to": null,
-          "status": "active",
-          "text": "The install-dsh script must copy files with decrypted content on EFS-encrypted directories.",
-          "session_id": null,
-          "score": 0.4236915589291804
         }
       ]
     },
