@@ -11,6 +11,14 @@ orchestrator/node_modules/
 orchestrator/dist/
 orchestrator/.pnpm-store/
 
+# DSH / agent runner state (run logs, session data, profiles)
+# .agent-team is created by the agent runner at the workspace root and
+# must never be committed (crash-on-bootstrap incident, Redmine #26/#27)
+.agent-team/
+
+# DSH skill files and harness state (mounted read-only; never commit)
+.dsh/
+
 # Agent workspaces (keep only the .gitkeep files)
 workspaces/*/*
 !workspaces/*/.gitkeep
