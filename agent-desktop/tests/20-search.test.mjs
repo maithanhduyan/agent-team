@@ -31,8 +31,11 @@ test('T04 search suite (Redmine #30)', { skip: adapter ? false : skipReason('T04
   const opts = { memoryDir, env: { MEMORY_HOT_MAX: 10, MEMORY_HOT_IMPORTANCE: 0.8 } };
 
   await t.test('§7.1: retrieval formula matches the golden set within 1e-6 (row 6)', async () => {
+    // Call params MUST match the golden generation params (golden meta
+    // minScoreDefault 0.1 / topKDefault 10) — forcing top_k:50/min_score:0
+    // here used to widen the result set beyond the golden's 10 hits.
     const params = golden.cases.default.params;
-    const res = await adapter.searchMemory({ query: golden.query, ...params, top_k: 50, min_score: 0 }, opts);
+    const res = await adapter.searchMemory({ query: golden.query, ...params }, opts);
     const expected = golden.cases.default.expected;
     assert.equal(res.results.length, expected.length, 'same hit set');
     for (let i = 0; i < expected.length; i++) {
@@ -43,15 +46,17 @@ test('T04 search suite (Redmine #30)', { skip: adapter ? false : skipReason('T04
       );
     }
     // deterministic output (R-JUDGE-free, spec §7.1)
-    const res2 = await adapter.searchMemory({ query: golden.query, ...params, top_k: 50, min_score: 0 }, opts);
+    const res2 = await adapter.searchMemory({ query: golden.query, ...params }, opts);
     assert.deepEqual(res2.results.map((r) => r.score), res.results.map((r) => r.score));
   });
 
   await t.test('§7.1: filters behave as specified (row 7)', async () => {
     for (const [name, c] of Object.entries(golden.cases)) {
       if (name === 'default' || !Array.isArray(c.expected)) continue;
+      // same rule as row 6: pass exactly the golden case's params (defaults
+      // minScore 0.1 / topK 10 apply unless the case overrides them).
       const res = await adapter.searchMemory(
-        { query: c.params.query ?? golden.query, top_k: 50, min_score: 0, ...c.params },
+        { query: c.params.query ?? golden.query, ...c.params },
         opts,
       );
       assert.equal(res.results.length, c.expected.length, `filter case ${name}: hit count`);
