@@ -157,12 +157,16 @@ is still injected →
 `['fact_0001','fact_0005','fact_0002','fact_0003']`.
 - Expected: decayed/demoted facts are excluded before injection (§10.4
   projection, T06-pinned in `00-fixture-selfcheck`).
-- Actual: injection happens on the raw file; the decay pass is T05's job
-  (`runConsolidationJob`), so a session start before the first
-  consolidation sees stale facts.
-- Verdict: **contract split divergence** (T04 `loadHotFacts` vs the
-  T06-pinned post-decay projection) — filed #39; product decision: run
-  decay before session start, or apply the projection in `loadHotFacts`.
+- Actual (fixed): **Redmine #39 resolved by TASK-7437 — contract (a) —
+  `loadHotFacts` now applies the §10.4 Day-30 decay projection
+  (`projectDay30Decay`) over `last_observed` before selection
+  (spec §6.3/§10.4 + ADR-019 updated). Row 5 is green.**
+- Residual suite fix included in #39 scope: the row-5 `MEMORY_HOT_MAX`
+  cap case never exercised `core-hot-max.md` (the adapter mapped the
+  file path → dirname, so `loadHotFacts` re-read the main `core.md`;
+  and the fixture used spec-invalid `fact_hNNNN` ids the T03/T04 parser
+  ignores). The adapter now stages a non-`core.md` fixture as
+  `core.md`, and the fixture ids were renumbered to `fact_<n>`.
 
 ### F5 — T04 rows 6/7: L3 recency anchored on `last_observed`, golden pinned `valid_from`
 With aligned params (`top_k:10, min_score:0.1`) T04 returns the golden hit
@@ -197,7 +201,7 @@ pinned contract surface:
 4. **SEC-MEM-01 render format divergence (T03/T04):** the implementation's `renderHotFacts/renderSearchResults/renderGrepMatches` emit a different item format (`- [hot] id (provenance: …, importance: …): text`) and `wrapMemoryBlock` prefixes the note with `# `. The T06-pinned format (`render-samples.json`) is `- [L3 id] importance=… provenance=… | text` with the bare note line. The adapter composes the **pinned** envelope/item lines from the implementation's own constants (`MEMORY_START`, `DATA_NOT_INSTRUCTIONS_NOTE`, `MEMORY_END`). The implementation's format differs from the pinned SEC-MEM-01 sample — worth aligning (filed as a note on #38/#40).
 5. **T04 `searchMemory(memoryDir, params, options)`**: the adapter forwards `memoryDir` from the suite's `opts` and pins the contract constants (α=0.5/β=0.3/γ=0.2, half-life 30 d, `now = CONTRACT.refNow`) — the impl exposes these as injectable options for determinism (spec §7.1).
 6. **T04 `grepLogs(memoryDir, params, {runsDir})`**: the adapter forwards `memoryDir`/`runsDir`, prefixes match files with `memory/`, and enforces the **pinned file order** (sessions.jsonl → archives asc → core.md) before applying `limit`. The implementation iterates archives first (chronological read order); the match SET is identical, only order/limit-slice differ. `invalid regex`/`no match`/context/RE2 behavior verified green.
-7. **T04 `loadHotFacts(memoryDir, options)`**: the adapter maps the suite's `core.md` path → `dirname`, and `env.MEMORY_HOT_*` → `minImportance`/`max`, pinned `now`. Selection divergence (no decay projection) is F4.
+7. **T04 `loadHotFacts(memoryDir, options)`**: the adapter maps the suite's `core.md` path → `dirname`, and `env.MEMORY_HOT_*` → `minImportance`/`max`, pinned `now`. Selection now applies the §10.4 Day-30 decay projection (Redmine #39 — `projectDay30Decay`, see F4). For a non-`core.md` fixture path (`core-hot-max.md`, the cap case) the adapter stages the file as `core.md` in a temp dir before calling the implementation.
 8. **T05 `consolidation.ts`** exposes its helpers directly in the T06 adapter shapes (`judge`, `runConsolidation`, `applyConflict`, `applyDecay`, `reflect`, `validateVerdict`, `resolvePanel` — the module doc states they are "the T06 adapter surface"); the adapter maps them 1:1. **Suite fully green.**
 9. **T03 writer clock:** the adapter pins `SessionsWriter` `now` to `CONTRACT.refNow` so audit records appended during the suite carry the corpus's reference instant (deterministic; without it the real wall clock can land mid-corpus).
 10. **No Redmine bugs filed before this run for T03–T05** — all implementation divergences found in this re-run are new: #38 (F2), #39 (F4), #40 (F5). T06-suite defects: #41 (F1, F-ORD, F3).
@@ -211,5 +215,5 @@ pinned contract surface:
 | Security | `docs/security-review-memory.md` SEC-MEM-01/02, SEC-KEY/COST/LOG |
 | Implementation | T03/T04/T05/T08 merged on `develop` via PRs #14–#17 (TASK-7174 / Redmine #35) |
 | Suite defects | Redmine #41 (F1, F-ORD, F3 — T06 deliverables) |
-| Implementation divergences | Redmine #38 (T03 parse, F2), #39 (T04 hot facts, F4), #40 (T04 search recency, F5) |
+| Implementation divergences | Redmine #38 (T03 parse, F2), #39 (T04 hot facts, F4 — **resolved by TASK-7437**), #40 (T04 search recency, F5) |
 | Input to | T07 [reviewer] #33 — matrix comparison uses this run's PASS/FAIL per §13 row |

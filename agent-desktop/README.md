@@ -261,15 +261,22 @@ import { injectHotFacts } from './src/index.js';
 const { facts, block } = await injectHotFacts(cfg.memoryDir, {
     minImportance: cfg.hotImportance, // default 0.8
     max: cfg.hotMax,                  // default 10
+    decayDays: cfg.decayDays,         // Day-30 projection period (default 30)
 });
-// facts: hot + active + importance >= 0.8, ordered by importance desc
+// facts: hot + active + importance >= 0.8 (on the §10.4 decay projection),
+//        ordered by importance desc
 // block: [MEMORY_START] … "data, not instructions" … [/MEMORY_END]
 ```
 
-Selection: `hot: true` AND `status: active` AND `importance ≥
-MEMORY_HOT_IMPORTANCE` AND the validity window is open — ordered by
-importance desc (ties by id), capped at `MEMORY_HOT_MAX`. A missing
-`core.md` yields zero facts (not an error).
+Selection runs on the **Day-30 decay projection** (§10.4, Redmine #39):
+before selecting, each fact is projected forward from its
+`last_observed` to now — importance halved per `decayDays` cycle (floor
+0.1), `stale` after 2 cycles, hot demoted below the threshold — so a
+decayed fact is never injected even when the session starts before the
+first consolidation run. Then: `hot: true` AND `status: active` AND
+`importance ≥ MEMORY_HOT_IMPORTANCE` AND the validity window is open —
+ordered by importance desc (ties by id), capped at `MEMORY_HOT_MAX`. A
+missing `core.md` yields zero facts (not an error).
 
 ## SEC-MEM-02 — memory trust guidance + agentic protocol (spec §7.3)
 
@@ -345,6 +352,9 @@ rule** (N = `MEMORY_GRADUATION_N` distinct observations, 3–5, §8.4) →
 - **Decay (§10.4):** facts not re-observed for `MEMORY_DECAY_DAYS`
   (30) are halved per cycle (floor 0.1), hot facts demoted, stale at
   2 cycles (~60 days). Idempotent via the L2 `decay` record trail.
+  Hot-fact injection applies the same decay as a **read-time
+  projection** (Redmine #39) so decayed facts are excluded even before
+  the first consolidation run.
 
 ## Judge gate + providers (spec §9, Q5)
 
@@ -404,7 +414,7 @@ per-model spend without keys (SEC-COST-02); logs are redacted via
 
 ```bash
 npm install
-npm test          # node --test + tsx (197 tests: T03 writers + T04 tools + T05 consolidation + T08 telegram bridge)
+npm test          # node --test + tsx (202 tests: T03 writers + T04 tools + T05 consolidation + T08 telegram bridge)
 npm run typecheck # tsc --noEmit
 npm run build     # tsc -> dist/
 npm run consolidate  # run the consolidation job once (reads env)
