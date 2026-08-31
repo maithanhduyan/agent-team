@@ -1,12 +1,15 @@
 /**
  * T06 test harness.
  *
- * Locates the T03/T04/T05 implementation modules (when merged) and
- * loads fixtures. The implementation modules are expected to land in
- * `agent-desktop/` per ARCHITECTURE.md §8.1; candidate paths are
- * probed in order and the first hit wins. When nothing is found the
- * suite reports the dependency as unavailable and skips (with reason)
- * instead of failing — the fixtures remain fully self-checked.
+ * Locates the T03/T04/T05 implementation modules and loads fixtures.
+ * The implementation landed in `agent-desktop/src/**` as TypeScript
+ * (TASK-7174 / Redmine #35); candidate paths are probed in order and
+ * the first hit wins. The .ts modules import each other with `./x.js`
+ * specifiers, so importing them requires the tsx loader — run-suite.mjs
+ * injects it when it is resolvable in the project's dependency tree.
+ * When nothing is found the suite reports the dependency as unavailable
+ * and skips (with reason) instead of failing — the fixtures remain fully
+ * self-checked.
  */
 import { existsSync, readFileSync, mkdtempSync, cpSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -17,9 +20,19 @@ export const TESTS_DIR = join(HARNESS_DIR, '..'); // tests
 export const FIXTURES = join(TESTS_DIR, 'fixtures');
 export const AGENT_DESKTOP = resolve(TESTS_DIR, '..');
 
-/** Candidate implementation entry points, per task (probed in order). */
+/**
+ * Candidate implementation entry points, per task (probed in order).
+ *
+ * The primary candidate for every task is the public API aggregator
+ * `agent-desktop/src/index.ts` — it re-exports the full T03/T04/T05
+ * surface (see its export list). The task-specific .ts modules and the
+ * legacy .mjs/.js paths are kept as fallbacks for other layouts.
+ */
 const IMPL_CANDIDATES = {
   T03: [
+    'src/index.ts',
+    'src/core-writer.ts',
+    'src/sessions-writer.ts',
     'src/memory/writer.mjs',
     'src/memory/writer.js',
     'src/writer.mjs',
@@ -28,12 +41,18 @@ const IMPL_CANDIDATES = {
     'memory/writer.js',
   ],
   T04: [
+    'src/index.ts',
+    'src/search-memory.ts',
+    'src/grep-logs.ts',
+    'src/hot-facts.ts',
     'src/memory/search.mjs',
     'src/memory/search.js',
     'src/search.mjs',
     'src/search.js',
   ],
   T05: [
+    'src/index.ts',
+    'src/consolidation.ts',
     'src/memory/consolidation.mjs',
     'src/memory/consolidation.js',
     'src/consolidation.mjs',
@@ -59,7 +78,7 @@ export function findImpl(task) {
 
 export function skipReason(task) {
   const d = DEPENDENCIES[task];
-  return `SKIPPED: ${d.title} not merged yet (Redmine #${d.redmine} — status In Progress). No implementation to test; fixtures for this section are delivered and self-checked.`;
+  return `SKIPPED: ${d.title} (Redmine #${d.redmine}) not found at the probed implementation paths (src/index.ts, ...). The .ts modules need the tsx loader (run-suite.mjs injects it); without it the fixtures for this section remain self-checked.`;
 }
 
 export function fixturePath(name) {
