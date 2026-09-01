@@ -20,7 +20,47 @@ the project architecture, or the product scope changes.
 > second PR to merge reconciles the file (trivial append). Per the cto
 > ADR-ownership rule (see the TASK-179 version of this file), the cto
 > assigns final numbers on merge; working numbers on branches never
-> collide because each PR appends its own range.
+> collide because each PR appends its own range. The Q5-enablement
+> branch (pm TASK-9633 / Redmine #50) adds ADR-023 — the next free
+> number after the pending ADR-020/021/022 carried by PR #34 (T12) and
+> PR #35 (T13).
+
+## ADR-023 — Q5 enabled: multi-model judge panel on in the GEPA pipeline (Redmine #50)
+
+- **Status:** accepted (pm coordination — TASK-9633 / Redmine #50;
+  backend implements via Redmine #52; builds on ADR-008/010/017)
+- **Date:** 2026-09
+- **Context:** Q5 (multi-model judge team) was gated on API keys that
+  the project owner had to provide (ADR-008/010/017, T05/T12). The
+  owner has now installed `OPENAI_API_KEY` + `GEMINI_API_KEY` into the
+  docker stack `.env` (git-ignored) and injected them into every agent
+  container, and verified them against the real APIs (OpenAI OK, 126
+  models; Gemini OK, 50 models). The Gemini API currently exposes
+  `gemini-2.5-flash` / `gemini-2.5-pro` — there is **no** "gemini-3"
+  model id, while the T12 code (PR #34, `agent-desktop/src/llm-provider.ts`)
+  still defaults the Gemini provider's modelId to `gemini-3-pro`.
+- **Decision (pm scope, backend implements):**
+  - **Enable the full judge panel** in the GEPA pipeline (module T12):
+    DeepSeek (default, `deepseek-chat`) + `gpt-4` (OpenAI) +
+    `gemini-2.5-pro` (Gemini). Gemini's provider modelId must point to
+    the real id `gemini-2.5-pro` (rename/alias the panel key if needed;
+    the panel key is `'gemini-3'` today — the API id is
+    `gemini-2.5-pro`).
+  - **Keys stay env-only** (SEC-KEY-01..03): never in git, logs,
+    artifacts; a missing key disables that model (skip, never fail).
+  - **Per-model monthly caps** (SEC-COST-01/02, T01 spec §9 /
+    `docs/gepa-pipeline.md` §7): `JUDGE_CAP_DEEPSEEK_USD` $15,
+    `JUDGE_CAP_GPT4_USD` $10, `JUDGE_CAP_GEMINI3_USD` $10; capped ⇒
+    auto-disable; **all-capped ⇒ evolution pauses safely** (SEC-GEPA-09),
+    never an unjudged write.
+  - **Runtime fallback** (SEC-LOG-01/02): a model that errors at
+    runtime is dropped from the panel; logs are redacted; the pipeline
+    continues (skip, never fail).
+- **Consequences:** backend issue Redmine #52 (small [backend] task,
+  v0.5 Skill Evolution) — panel config, mock tests (no spend),
+  one real 3-model call on 1–2 verdicts with a cost report, docs
+  update (`docs/gepa-pipeline.md` + `TESTING.md`). Cost tracking is
+  per-model per calendar month and is reported to the owner.
 
 ## ADR-019 — T04 hot-fact injection applies the Day-30 decay projection read-time (Redmine #39)
 
