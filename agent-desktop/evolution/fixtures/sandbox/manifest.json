@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "harness": "install-dsh-windows-sandbox",
+  "harness_version": "0.1.0",
+  "skill": "install-dsh",
+  "scenario_classes": {
+    "happy-path": {
+      "description": "Normal install-dsh flow: clean install, idempotency, uninstall/reinstall, PATH, smoke start, version output.",
+      "planted_failure": false
+    },
+    "efs": {
+      "description": "Planted failure: EFS-encrypted directories (C:\\Users\\owner) break plain CopyFileEx (ERROR_ACCESS_DENIED 5 / EFS 1314); correct handling copies with decryption.",
+      "planted_failure": true
+    },
+    "junction": {
+      "description": "Planted failure: directory junctions/links under the install root are followed by the naive copier, landing files on the wrong target or looping; correct handling resolves links and is loop-safe.",
+      "planted_failure": true
+    },
+    "service-password": {
+      "description": "Planted failure: the DSH agent service credential (password with special characters) is rejected by CreateServiceW / sc.exe create (error 1069); correct handling quotes/escapes the credential.",
+      "planted_failure": true
+    }
+  },
+  "cases": [
+    { "id": "ID-INSTALL-DSH-001", "scenario": "happy-path", "name": "fresh install on clean Windows 11 system" },
+    { "id": "ID-INSTALL-DSH-002", "scenario": "happy-path", "name": "install idempotency: second run reports already installed" },
+    { "id": "ID-INSTALL-DSH-003", "scenario": "happy-path", "name": "uninstall then reinstall cycle" },
+    { "id": "ID-INSTALL-DSH-004", "scenario": "happy-path", "name": "install with default profile path" },
+    { "id": "ID-INSTALL-DSH-005", "scenario": "happy-path", "name": "dsh binary starts after install (smoke)" },
+    { "id": "ID-INSTALL-DSH-006", "scenario": "happy-path", "name": "PATH entry + dsh --version output" },
+    { "id": "ID-INSTALL-DSH-007", "scenario": "efs", "name": "PLANTED FAILURE: CopyFileEx to EFS-encrypted dir fails EFS 1314" },
+    { "id": "ID-INSTALL-DSH-008", "scenario": "efs", "name": "fix validated: raw copy with decryption on EFS dir succeeds" },
+    { "id": "ID-INSTALL-DSH-009", "scenario": "efs", "name": "PLANTED FAILURE: read-back from EFS dir returns encrypted bytes" },
+    { "id": "ID-INSTALL-DSH-010", "scenario": "efs", "name": "fix validated: read via EFS decryption handle returns plaintext" },
+    { "id": "ID-INSTALL-DSH-011", "scenario": "efs", "name": "EFS detection probe before install flags encrypted profile" },
+    { "id": "ID-INSTALL-DSH-012", "scenario": "junction", "name": "PLANTED FAILURE: copier follows junction and writes to wrong target" },
+    { "id": "ID-INSTALL-DSH-013", "scenario": "junction", "name": "fix validated: junctions resolved before choosing install root" },
+    { "id": "ID-INSTALL-DSH-014", "scenario": "junction", "name": "PLANTED FAILURE: junction loop causes infinite recursion" },
+    { "id": "ID-INSTALL-DSH-015", "scenario": "junction", "name": "fix validated: loop-safe traversal with visited set" },
+    { "id": "ID-INSTALL-DSH-016", "scenario": "junction", "name": "install under a junctioned directory succeeds (resolved target)" },
+    { "id": "ID-INSTALL-DSH-017", "scenario": "service-password", "name": "PLANTED FAILURE: service start fails — password rejected by CreateServiceW" },
+    { "id": "ID-INSTALL-DSH-018", "scenario": "service-password", "name": "fix validated: service starts with escaped/quoted credential" },
+    { "id": "ID-INSTALL-DSH-019", "scenario": "service-password", "name": "PLANTED FAILURE: password with special chars breaks config write" },
+    { "id": "ID-INSTALL-DSH-020", "scenario": "service-password", "name": "fix validated: sc.exe create with quoted args succeeds" },
+    { "id": "ID-INSTALL-DSH-021", "scenario": "service-password", "name": "service install + start idempotent" }
+  ]
+}
