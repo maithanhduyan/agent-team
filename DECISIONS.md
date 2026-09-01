@@ -15,12 +15,81 @@ the project architecture, or the product scope changes.
 > bridge) adds ADR-014; the T09 GEPA pipeline design PR (TASK-7213 /
 > Redmine #36) adds ADR-015…ADR-017; the T10 skill-evolution acceptance
 > PR (TASK-7214 / Redmine #37) adds ADR-018 (renumbered on merge by pm —
-> ba's working number 015 collided with cto's ADR-015). On merge, keep
+> ba's working number 015 collided with cto's ADR-015). The T11 eval
+> dataset builder PR (TASK-8866 / Redmine #44) adds ADR-020. On merge, keep
 > all sets; the
 > second PR to merge reconciles the file (trivial append). Per the cto
 > ADR-ownership rule (see the TASK-179 version of this file), the cto
 > assigns final numbers on merge; working numbers on branches never
 > collide because each PR appends its own range.
+
+## ADR-020 — Eval dataset builder (T11): source contracts, layout, immutability (Redmine #44)
+
+- **Status:** proposed (TASK-8866 / Redmine #44; T11 — eval dataset
+  builder for the GEPA pipeline; contract T10 §4 / ADR-018, design T09
+  §3.1 stage 1)
+- **Date:** 2026-09
+- **Context:** the GEPA pipeline needs a versioned, hashed eval dataset
+  ("Context → error → fix") built from Windows Sandbox tests (T14) and
+  real error logs, with every case traceable to exactly one approved
+  source (T10 §4.1). T14 (harness manifest) had not merged at T11 build
+  time, so T11 must fix the builder contracts and the dataset layout
+  that T12/T14 consume.
+- **Decision (backend scope):**
+  - **Layout:** all GEPA evolution infrastructure lives under
+    `agent-desktop/evolution/` (contracts/, src/, test/, fixtures/,
+    datasets/, reports/, runs/); `EVOLUTION_RUNS_DIR` defaults to
+    `<agent-desktop>/evolution/runs`. Dataset files are committed **only**
+    under `datasets/` (QL-3); build reports under `reports/`; run
+    manifests (`SEC-GEPA-11`) under `runs/` are gitignored.
+  - **T14 assumption (coordinated with tester):** the harness manifest
+    format is fixed as `fixtures/sandbox/manifest.json`
+    (`schema_version`, `harness`, `harness_version`, `scenario_classes`
+    with `planted_failure`, `cases[id, scenario, name]`) and the results
+    format as `fixtures/sandbox/results/mode-a.json`. The four scenario
+    classes are pinned by T10 §4.3: `happy-path`, `efs`, `junction`,
+    `service-password`. When T14 merges its manifest, fixtures are
+    replaced and the dataset rebuilt with a bumped `harness_version` and
+    a new dataset id.
+  - **Source contracts (SRC-1..3):** sandbox cases must reference a
+    manifest `case_id` with a result entry; failed sandbox cases must
+    quote the captured failure exactly; `verified: sandbox-pass` requires
+    the fix-validation test (`fix_case_id`) to have passed in the
+    results. Error-log cases carry `ref = <file>:<line>` and the builder
+    verifies the error is **quoted exactly** from that line of a real
+    file — an unverifiable source fails the build (mirror of the memory
+    provenance rule, `docs/memory-spec.md` §4.3).
+  - **Format (FMT-1..5):** one JSON dataset file
+    (`schema_version: 1`) validated against
+    `contracts/eval-dataset.schema.json` (the same schema T14 scores
+    with). Records are `{id, context, error, fix, scenario, source,
+    severity, verified}`; `fix` must be the correct handling (never just
+    "retry"); dedup on normalized `(context, error)` at build time,
+    counted in the report.
+  - **Coverage + immutability (COV-1..3):** thresholds
+    `EVAL_MIN_CASES=20`, `EVAL_MIN_CASES_PER_SCENARIO=3`,
+    `EVAL_MIN_REAL_LOG_CASES=1` (per class with logs available — classes
+    without logs are recorded `logs_available: false` in the report);
+    every manifest class must be present; the report records per-class /
+    per-source / dedup counts and the dataset `sha256` (computed over the
+    exact serialized bytes). The builder refuses to overwrite an existing
+    dataset file (`--force` to rebuild deliberately) so a run pins
+    dataset version + hash.
+  - **No secrets (SEC-GEPA-08 / QL-1..3):** tool output is redacted
+    before use (shared `redactSecrets`); the final dataset is
+    secret-scanned (`secret-scan.ts` — provider env refs `OPENAI_/
+    GEMINI_/DEEPSEEK_`, `sk-...`, `AIza...`, bot tokens, `KEY=value`
+    assignments, PEM blocks) with **0 hits required**; local copies are
+    written `0600`.
+  - **Determinism (CG-1):** dataset builds are deterministic given the
+    inputs and a pinned `built_at` (`--timestamp`), so the same inputs
+    reproduce the same `sha256` — guardrail checks stay re-runnable from
+    the audit trail alone.
+- **Consequences:** T12 pins `dataset_id` + `sha256` from the build
+  report and passes the dataset to the sidecar (`initialize` validates
+  the hash); T14 scores against the same schema + manifest classes; T15/
+  T19 replay from the report's hash. Implemented + tested in
+  `agent-desktop/evolution/` (27 tests: SRC/FMT/COV/QL + CLI).
 
 ## ADR-019 — T04 hot-fact injection applies the Day-30 decay projection read-time (Redmine #39)
 
