@@ -6,8 +6,8 @@
  *   node dist/cli-consolidate.js                    (built)
  *
  * Reads the environment (`loadMemoryConfig`), builds the judge panel
- * from the registered providers (default DeepSeek; gpt-4/gemini-3 when
- * their keys are present — Q5), and runs `runConsolidationJob`. The
+ * from the registered providers (default DeepSeek; gpt-4/gemini-2.5-pro
+ * when their keys are present — Q5), and runs `runConsolidationJob`. The
  * summary output contains per-model spend and run counts only — no
  * keys, no memory content (SEC-LOG-01/SEC-COST-02, ADR-010).
  *

@@ -2,8 +2,10 @@
  * GEPA judge team (T12, ADR-017 / T09 §6, Q5) — multi-model panel
  * reusing the T05 machinery (`llm-provider.ts`, `costs.ts`, `judge.ts`).
  *
- * - Provider abstraction: DeepSeek (default) / gpt-4 / gemini-3 behind
- *   `LLMProvider`; enable/disable via `JUDGE_PANEL_MODELS`.
+ * - Provider abstraction: DeepSeek (default) / gpt-4 / gemini-2.5-pro
+ *   behind `LLMProvider`; enable/disable via `JUDGE_PANEL_MODELS`.
+ *   The Gemini model id is the REAL API id `gemini-2.5-pro` (there is
+ *   no "gemini-3" on the API — Q5, Redmine #52).
  * - SEC-KEY-03: missing keys SKIP a model (never fail); the pipeline
  *   runs with DeepSeek only when that is all that is enabled.
  * - SEC-GEPA-09/SEC-COST-01: per-model monthly caps via `CostTracker`;
@@ -314,13 +316,14 @@ async function monthlySpendOf(provider: LLMProvider, cost?: CostTracker): Promis
     return cost?.monthlySpend(provider.name) ?? 0;
 }
 
-/** Map a registry model name (`gpt-4`/`gemini-3`) to the config key
- * (`gpt4`/`gemini3` — T05 `JudgeCaps` surface). */
+/** Map a registry model name (`gpt-4`/`gemini-2.5-pro`) to the config
+ * key (`gpt4`/`gemini3` — T05 `JudgeCaps` surface; `gemini3` keeps the
+ * spec env name `JUDGE_CAP_GEMINI3_USD`, SEC-COST-01). */
 function cfgKeyFor(name: string): keyof JudgeTeamConfig['caps'] | undefined {
     switch (name) {
         case 'deepseek': return 'deepseek';
         case 'gpt-4': return 'gpt4';
-        case 'gemini-3': return 'gemini3';
+        case 'gemini-2.5-pro': return 'gemini3';
         default: return undefined;
     }
 }
