@@ -25,7 +25,9 @@
     "evolve:run": "node --import tsx evolution/runner/src/cli.ts",
     "evolve:run:built": "node dist/evolution/runner/src/cli.js",
     "test:runner": "node --import tsx --test evolution/runner/test/*.test.ts",
-    "test:sidecar": "python3 -m unittest discover -s evolution/sidecar/tests -q"
+    "test:sidecar": "PYTHONPATH=evolution/sidecar python3 -m unittest discover -s evolution/sidecar/tests -q",
+    "test:workflow": "node --import tsx --test evolution/workflow/test/*.test.ts",
+    "evolve:pr": "node --import tsx evolution/workflow/src/cli.ts"
   },
   "devDependencies": {
     "@types/node": "^24.10.0",

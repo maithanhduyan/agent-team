@@ -8,6 +8,8 @@
   "include": [
     "src",
     "evolution/src",
+    "evolution/workflow/src",
+    "evolution/workflow/test",
     "runner/src"
   ]
 }
