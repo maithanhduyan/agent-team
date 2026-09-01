@@ -327,18 +327,18 @@ output-validation points intact.
 ## 7. Q5 — Multi-model "reflection/judge team" security
 
 Owner decision Q5 (plan #22): judge/reflection LLM calls go through a
-**multi-model panel** (gpt-4 / gemini-3 / deepseek) behind a provider
-abstraction, per-model cost caps, enable/disable config (default:
-DeepSeek only). T01 defined the functional contract (spec §9,
-ADR-008). This section adds the **security requirements**.
+**multi-model panel** (gpt-4 / gemini-2.5-pro / deepseek) behind a
+provider abstraction, per-model cost caps, enable/disable config
+(default: DeepSeek only). T01 defined the functional contract (spec
+§9, ADR-008). This section adds the **security requirements**.
 
 ### 7.1 API key management
 
 | Key | Status | Storage |
 |---|---|---|
 | `DEEPSEEK_API_KEY` | ✅ available | env / provider config only (already used by the stack) |
-| `OPENAI_API_KEY` (gpt-4) | ⏳ **owner must provide** (plan #22) | env only — added when provided |
-| `GEMINI_API_KEY` (gemini-3) | ⏳ **owner must provide** (plan #22) | env only — added when provided |
+| `OPENAI_API_KEY` (gpt-4) | ✅ **provided 2026-09-01** (Redmine #50) | env only — injected into all agent containers via the docker stack |
+| `GEMINI_API_KEY` (gemini-2.5-pro — real API id; no "gemini-3" exists) | ✅ **provided 2026-09-01** (Redmine #50) | env only — injected into all agent containers via the docker stack |
 
 - **SEC-KEY-01:** keys live in environment / `.env` (gitignored) /
   compose secrets — **never** in memory files (`sessions.jsonl`,
@@ -354,8 +354,10 @@ ADR-008). This section adds the **security requirements**.
 
 ### 7.2 Per-model cost caps
 
-- Defaults from T01 (spec §9.5): DeepSeek $15 / gpt-4 $10 / gemini-3
-  $10 per month, within the owner's $30–50/month pilot budget (Q5).
+- Defaults from T01 (spec §9.5): DeepSeek $15 / gpt-4 $10 /
+  gemini-2.5-pro $10 per month, within the owner's $30–50/month pilot
+  budget (Q5). The env name `JUDGE_CAP_GEMINI3_USD` is kept (spec
+  §9.5) and applies to the `gemini-2.5-pro` model (Redmine #52).
 - **SEC-COST-01:** cost is accumulated per model per calendar month
   (persisted in `memory/costs-YYYYMM.json`, outside memory semantic
   content); on cap → model auto-disables for the rest of the month
@@ -377,7 +379,8 @@ ADR-008). This section adds the **security requirements**.
 
 The functional contract (T01 §9) plus SEC-KEY-01…03, SEC-COST-01…02,
 SEC-LOG-01…02 make the multi-model judge team safe to operate with
-DeepSeek today and gpt-4/gemini-3 as soon as the owner supplies keys.
+DeepSeek today and gpt-4/gemini-2.5-pro since the owner supplied keys
+on 2026-09-01 (Redmine #50/#52).
 Recorded as **ADR-010** (DECISIONS.md).
 
 ---
