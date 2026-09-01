@@ -45,3 +45,12 @@ data/observer.log
 # keep the directory README, never commit session/fact data)
 agent-desktop/memory/*
 !agent-desktop/memory/README.md
+
+# agent-desktop — GEPA evolution run manifests (SEC-GEPA-11 audit
+# records written by the T12 runner; keep the README, never commit
+# generated run manifests — one dir per job under runs/)
+agent-desktop/evolution/runs/**
+
+# T14 harness — generated result JSON (commit only the golden reference)
+agent-desktop/evolution/harness/results/*
+!agent-desktop/evolution/harness/results/mode-a-reference.golden.json

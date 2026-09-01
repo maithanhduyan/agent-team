@@ -69,6 +69,9 @@ export class CostTracker {
     private readonly opts: Required<Pick<CostTrackerOptions, 'now'>> & CostTrackerOptions;
     private state: CostMonthFile | null = null;
     private loadedForMonth: string | null = null;
+    /** In-flight load promise (concurrency-safe: concurrent `load()`
+     * calls share one load; state is set before the guard releases). */
+    private loadPromise: Promise<void> | null = null;
 
     constructor(memoryDir: string, opts: CostTrackerOptions = {}) {
         this.dir = memoryDir;
@@ -88,12 +91,25 @@ export class CostTracker {
         return path.join(this.dir, `costs-${this.currentMonth()}.json`);
     }
 
-    /** Load the month's cost file (idempotent; missing file → zero state). */
+    /** Load the month's cost file (idempotent; missing file → zero state).
+     * Concurrency-safe: concurrent callers share the in-flight load and
+     * only proceed once `state` is populated (T12 judge calls
+     * `recordCost` for panel models in parallel — SEC-GEPA-09). */
     async load(): Promise<void> {
         const month = this.currentMonth();
-        if (this.loadedForMonth === month) {
+        if (this.loadedForMonth === month && this.state !== null) {
             return;
         }
+        if (this.loadPromise) {
+            return this.loadPromise;
+        }
+        this.loadPromise = this.doLoad(month).finally(() => {
+            this.loadPromise = null;
+        });
+        return this.loadPromise;
+    }
+
+    private async doLoad(month: string): Promise<void> {
         this.state = null;
         this.loadedForMonth = month;
         const file = this.filePath();

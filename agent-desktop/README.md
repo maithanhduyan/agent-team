@@ -436,6 +436,22 @@ permissions; files default to `0600` (spec §11). The consolidation job
 adds `consolidation-cursor.json` (cursor) and `costs-YYYYMM.json`
 (per-model spend, SEC-COST-01) to the memory dir.
 
+## GEPA skill evolution — eval dataset builder (T11, v0.5)
+
+The v0.5 milestone evolves `SKILL.md` skills (first: `install-dsh`) via
+the GEPA pipeline (`docs/gepa-pipeline.md`). The **eval dataset
+builder** ([`evolution/`](evolution/README.md)) converts Windows Sandbox
+test results (T14) + real error logs into the *Context → error → fix*
+dataset that scores candidates (contract: `docs/skill-evolution-acceptance.md`
+§4; ADR-015/016/017/020).
+
+```bash
+npm run test:evolution        # T11 dataset-builder test suite (27 tests)
+npm run typecheck:evolution   # tsc --noEmit -p evolution/tsconfig.json
+npm run eval:dataset -- --help # dataset builder CLI (see evolution/README.md)
+npm run eval:scan -- evolution/datasets/install-dsh-v0.1.json  # SEC-LOG-02 guard
+```
+
 ## Tests (T06)
 
 - Fixtures + suite: [`tests/`](tests/) — see [`tests/README.md`](tests/README.md)
@@ -444,6 +460,23 @@ adds `consolidation-cursor.json` (cursor) and `costs-YYYYMM.json`
 ```bash
 node tests/run-suite.mjs   # from this directory
 ```
+
+## GEPA eval harness (T14, v0.5)
+
+The install-dsh eval suite packaged as a **fitness gate** for the GEPA
+skill-evolution pipeline (T09 §5, ADR-016): happy path + planted
+failures (EFS, junction, service-password), scenario-class manifest,
+unified result JSON schema, shared fitness function, and two run modes
+(T09 §5.4 Q3):
+
+- **Mode A — offline/CI** (`evolution/harness/mode-a/run-mode-a.mjs`):
+  deterministic in the Linux sandbox; reference behavior 12/12 +
+  planted-failure detection matrix.
+- **Mode B — owner-run Windows Sandbox** (`evolution/harness/mode-b/`):
+  PowerShell harness + owner instructions + result form; owner uploads
+  the result JSON (same schema) as merge evidence (T17).
+
+See [`evolution/harness/README.md`](evolution/harness/README.md).
 
 > Status note (PM, TASK-7174): T06 fixtures were authored before the
 > backend PRs (#14–#17) merged; the implementation suites were skip-aware

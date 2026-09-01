@@ -15,12 +15,135 @@ the project architecture, or the product scope changes.
 > bridge) adds ADR-014; the T09 GEPA pipeline design PR (TASK-7213 /
 > Redmine #36) adds ADR-015…ADR-017; the T10 skill-evolution acceptance
 > PR (TASK-7214 / Redmine #37) adds ADR-018 (renumbered on merge by pm —
-> ba's working number 015 collided with cto's ADR-015). On merge, keep
+> ba's working number 015 collided with cto's ADR-015). The T11 eval
+> dataset builder PR (TASK-8866 / Redmine #44) adds ADR-020. The T12
+> evolution runner PR (TASK-9053 / Redmine #47) adds ADR-021. On merge, keep
 > all sets; the
 > second PR to merge reconciles the file (trivial append). Per the cto
 > ADR-ownership rule (see the TASK-179 version of this file), the cto
 > assigns final numbers on merge; working numbers on branches never
 > collide because each PR appends its own range.
+## ADR-020 — Eval dataset builder (T11): source contracts, layout, immutability (Redmine #44)
+
+- **Status:** proposed (TASK-8866 / Redmine #44; T11 — eval dataset
+  builder for the GEPA pipeline; contract T10 §4 / ADR-018, design T09
+  §3.1 stage 1)
+- **Date:** 2026-09
+- **Context:** the GEPA pipeline needs a versioned, hashed eval dataset
+  ("Context → error → fix") built from Windows Sandbox tests (T14) and
+  real error logs, with every case traceable to exactly one approved
+  source (T10 §4.1). T14 (harness manifest) had not merged at T11 build
+  time, so T11 must fix the builder contracts and the dataset layout
+  that T12/T14 consume.
+- **Decision (backend scope):**
+  - **Layout:** all GEPA evolution infrastructure lives under
+    `agent-desktop/evolution/` (contracts/, src/, test/, fixtures/,
+    datasets/, reports/, runs/); `EVOLUTION_RUNS_DIR` defaults to
+    `<agent-desktop>/evolution/runs`. Dataset files are committed **only**
+    under `datasets/` (QL-3); build reports under `reports/`; run
+    manifests (`SEC-GEPA-11`) under `runs/` are gitignored.
+  - **T14 assumption (coordinated with tester):** the harness manifest
+    format is fixed as `fixtures/sandbox/manifest.json`
+    (`schema_version`, `harness`, `harness_version`, `scenario_classes`
+    with `planted_failure`, `cases[id, scenario, name]`) and the results
+    format as `fixtures/sandbox/results/mode-a.json`. The four scenario
+    classes are pinned by T10 §4.3: `happy-path`, `efs`, `junction`,
+    `service-password`. When T14 merges its manifest, fixtures are
+    replaced and the dataset rebuilt with a bumped `harness_version` and
+    a new dataset id.
+  - **Source contracts (SRC-1..3):** sandbox cases must reference a
+    manifest `case_id` with a result entry; failed sandbox cases must
+    quote the captured failure exactly; `verified: sandbox-pass` requires
+    the fix-validation test (`fix_case_id`) to have passed in the
+    results. Error-log cases carry `ref = <file>:<line>` and the builder
+    verifies the error is **quoted exactly** from that line of a real
+    file — an unverifiable source fails the build (mirror of the memory
+    provenance rule, `docs/memory-spec.md` §4.3).
+  - **Format (FMT-1..5):** one JSON dataset file
+    (`schema_version: 1`) validated against
+    `contracts/eval-dataset.schema.json` (the same schema T14 scores
+    with). Records are `{id, context, error, fix, scenario, source,
+    severity, verified}`; `fix` must be the correct handling (never just
+    "retry"); dedup on normalized `(context, error)` at build time,
+    counted in the report.
+  - **Coverage + immutability (COV-1..3):** thresholds
+    `EVAL_MIN_CASES=20`, `EVAL_MIN_CASES_PER_SCENARIO=3`,
+    `EVAL_MIN_REAL_LOG_CASES=1` (per class with logs available — classes
+    without logs are recorded `logs_available: false` in the report);
+    every manifest class must be present; the report records per-class /
+    per-source / dedup counts and the dataset `sha256` (computed over the
+    exact serialized bytes). The builder refuses to overwrite an existing
+    dataset file (`--force` to rebuild deliberately) so a run pins
+    dataset version + hash.
+  - **No secrets (SEC-GEPA-08 / QL-1..3):** tool output is redacted
+    before use (shared `redactSecrets`); the final dataset is
+    secret-scanned (`secret-scan.ts` — provider env refs `OPENAI_/
+    GEMINI_/DEEPSEEK_`, `sk-...`, `AIza...`, bot tokens, `KEY=value`
+    assignments, PEM blocks) with **0 hits required**; local copies are
+    written `0600`.
+  - **Determinism (CG-1):** dataset builds are deterministic given the
+    inputs and a pinned `built_at` (`--timestamp`), so the same inputs
+    reproduce the same `sha256` — guardrail checks stay re-runnable from
+    the audit trail alone.
+- **Consequences:** T12 pins `dataset_id` + `sha256` from the build
+  report and passes the dataset to the sidecar (`initialize` validates
+  the hash); T14 scores against the same schema + manifest classes; T15/
+  T19 replay from the report's hash. Implemented + tested in
+  `agent-desktop/evolution/` (27 tests: SRC/FMT/COV/QL + CLI).
+
+## ADR-021 — GEPA evolution runner + fitness gate (T12): sidecar IPC, deterministic behavior proxy, gate-not-fitness (Redmine #47)
+
+- **Status:** proposed (TASK-9053 / Redmine #47; T12 — evolution runner
+  + fitness gate; contract T09 §3–§9 / ADR-015/016/017, T10 §5/§7,
+  SEC-GEPA-01…11)
+- **Date:** 2026-09
+- **Context:** T12 must run one evolution run end-to-end (dataset →
+  sidecar evolve → guardrails → fitness gate → judge → audit manifest)
+  while keeping the ADR-009 trust boundary and the T09/T10 acceptance
+  numbers (fitness 1.0, size 15 KB, per-model cost caps).
+- **Decision (backend scope):**
+  - **Sidecar = per-run subprocess, JSON-RPC 2.0 over stdio**
+    (`evolution/sidecar/`, stdlib-only Python; `evolution/runner/src/
+    sidecar-client.ts`). Data whitelist per ADR-009 §6.1: dataset JSON
+    text + its `sha256`, base skill text + `sha256`, env-less config,
+    job id, scratch dir. The sidecar verifies the hashes in
+    `initialize` (COV-3 immutability) and never holds an API key: a
+    real LM call goes through an optional Node-controlled proxy
+    (`lm_proxy_url` + short-lived token); the deterministic `MockLM`
+    runs the same loop offline (SEC-KEY-03 — skip, never fail).
+  - **Fitness gate consumes the T14 harness contract exactly (PR #31):**
+    `harness/lib/fitness.mjs` `gate(result)` on the full suite + A/B
+    regression vs the base skill on the SAME dataset (SEC-GEPA-04).
+    Candidate SKILL.md → harness behavior via **deterministic
+    extraction** (`behavior.ts`, CG-1): a candidate that documents the
+    correct handling for a failure class gets the correct behavior;
+    one that dropped it gets the naive (failing) behavior — so the gate
+    measures exactly what the skill text says to do (Mode A proxy;
+    Mode B owner-uploaded results use the identical schema).
+  - **Gate, not fitness (hermes lesson):** candidates are REJECTED on
+    any gate failure (suite < 100%, size > 15 KB, any regression,
+    secret-scan hit, judge reject). The runner never merges
+    (SEC-GEPA-06/07) — it records a `merge-ready` verdict + the audit
+    manifest; the PR + owner/cto approval is T13.
+  - **Judge team (Q5/ADR-017):** reuses the T05 provider abstraction +
+    `CostTracker`; per-model caps (`JUDGE_CAP_*_USD`, defaults
+    15/10/10); capped model auto-disables; **all capped ⇒ the run
+    pauses safely** (no unjudged write, no cap override). A
+    `EVOLUTION_JUDGE_DRY_RUN` flag lets tests/CI exercise the pipeline
+    without keys (verdicts recorded, never blocking).
+  - **Audit trail (SEC-GEPA-11):** `evolution/runs/<job_id>/
+    manifest.json` (0600, gitignored) — dataset sha256, sidecar
+    version, config, per-candidate guardrail outcomes + fitness +
+    judge verdicts + final verdict + PR link; schema-validated against
+    `contracts/gepa-run-manifest.schema.json` and replayable.
+  - **Cost-tracker concurrency fix:** `src/costs.ts` `load()` is now
+    concurrency-safe (in-flight load shared) — the T12 judge calls
+    `recordCost` for panel models in parallel (SEC-GEPA-09).
+- **Consequences:** T13 builds the branch→PR→human-review workflow on
+  the `merge-ready` verdict + manifest; T15/T19 replay from the
+  manifest. Implemented + tested in `agent-desktop/evolution/runner/`
+  (46 Node/TS tests) + `evolution/sidecar/` (27 Python tests); T06
+  suite stays 40/40.
 
 ## ADR-019 — T04 hot-fact injection applies the Day-30 decay projection read-time (Redmine #39)
 

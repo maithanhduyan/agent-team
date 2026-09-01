@@ -1,0 +1,106 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://agent-team.local/evolution/contracts/eval-dataset.schema.json",
+  "title": "GEPA eval dataset — Context → error → fix (T10 §4.2)",
+  "description": "Schema v1 for the GEPA eval dataset of agent-desktop (v0.5 Skill Evolution). Every record has exactly the shape {id, context, error, fix, scenario, source{type, ref, harness_version}, severity, verified} (docs/skill-evolution-acceptance.md §4.2 FMT-1..5). Consumed by the T11 dataset builder (validation) and the T14 harness (scoring) — FMT-4: the same schema validates every record of a single JSON/JSONL dataset file with a declared schema version.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "dataset_id", "skill", "built_at", "harness_version", "case_count", "cases"],
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "description": "EVAL_DATASET_SCHEMA_VERSION (T10 §8, default 1)."
+    },
+    "dataset_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9._-]*$"
+    },
+    "skill": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Skill this dataset evolves (registry path; pilot: install-dsh)."
+    },
+    "built_at": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$",
+      "description": "Build timestamp (ISO-8601 UTC, ms). Overridable for reproducible builds (CG-1)."
+    },
+    "harness_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "T14 harness manifest version used for scenario classification (SRC-3)."
+    },
+    "case_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "cases": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/record" }
+    }
+  },
+  "definitions": {
+    "record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "context", "error", "fix", "scenario", "source", "severity", "verified"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^EVAL-[a-z0-9-]+-\\d{3,}$",
+          "description": "EVAL-<skill>-<NNN> (T10 §4.2)."
+        },
+        "context": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What the agent was doing + environment facts needed to reproduce (FMT-1)."
+        },
+        "error": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Exact failure: message / exit code / symptom (FMT-1, SRC-2 exact quote for error_log)."
+        },
+        "fix": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The correct handling, verified — NOT just \"retry\" (FMT-1)."
+        },
+        "scenario": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Scenario class from the T14 harness manifest (FMT-2 — unknown class fails validation)."
+        },
+        "source": { "$ref": "#/definitions/source" },
+        "severity": {
+          "enum": ["critical", "major", "minor"]
+        },
+        "verified": {
+          "enum": ["sandbox-pass", "human-confirmed"],
+          "description": "FMT-3: sandbox-pass = the fix passes the corresponding harness test; human-confirmed = owner/cto confirmed the fix (Q3 evidence). Unverified cases are excluded from the dataset."
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "ref", "harness_version"],
+      "properties": {
+        "type": {
+          "enum": ["sandbox_test", "error_log"],
+          "description": "Provenance tag (§4.1): sandbox_test = T14 harness test; error_log = real error log (DSH run logs / sessions.jsonl reflections / owner failure reports)."
+        },
+        "ref": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Test case id (sandbox_test) or <file>:<line> (error_log) — SRC-1: must be verifiable at build time."
+        },
+        "harness_version": {
+          "type": "string",
+          "minLength": 1,
+          "description": "T14 harness manifest version (SRC-3)."
+        }
+      }
+    }
+  }
+}

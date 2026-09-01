@@ -1,0 +1,69 @@
+{
+  "dataset_id": "install-dsh-v0.1",
+  "schema_version": 1,
+  "skill": "install-dsh",
+  "built_at": "2026-09-01T00:00:00.000Z",
+  "harness_version": "0.1.0",
+  "counts": {
+    "total": 24,
+    "by_scenario": {
+      "happy-path": 7,
+      "efs": 6,
+      "junction": 6,
+      "service-password": 5
+    },
+    "by_source": {
+      "sandbox_test": 16,
+      "error_log": 8
+    },
+    "by_verified": {
+      "sandbox-pass": 16,
+      "human-confirmed": 8
+    },
+    "by_severity": {
+      "critical": 6,
+      "major": 11,
+      "minor": 7
+    },
+    "real_log_by_scenario": {
+      "happy-path": 2,
+      "efs": 2,
+      "junction": 2,
+      "service-password": 2
+    }
+  },
+  "dedup": {
+    "input_cases": 25,
+    "duplicates_removed": 1,
+    "duplicate_keys": [
+      "install under appdata\\roaming\\dsh (a junction to c:\\tools\\dsh); the copier followed the junction during copy\u0000install-dsh: warning: junction c:\\users\\owner\\appdata\\roaming\\dsh -> c:\\tools\\dsh followed during copy; files landed on the wrong target"
+    ]
+  },
+  "coverage": {
+    "min_cases": 20,
+    "min_cases_per_scenario": 3,
+    "min_real_log_cases": 1,
+    "verified_pct": 100,
+    "classes_covered": [
+      "happy-path",
+      "efs",
+      "junction",
+      "service-password"
+    ],
+    "classes_missing": [],
+    "logs_available_by_scenario": {
+      "happy-path": true,
+      "efs": true,
+      "junction": true,
+      "service-password": true
+    },
+    "pass": true,
+    "errors": []
+  },
+  "secret_scan": {
+    "hits": [],
+    "scanned_bytes": 17230,
+    "pass": true
+  },
+  "sha256": "6c45e86e7191f0c154fbf2b61b732bb3a47e787ae179ed0b064dda5e417f6408"
+}
