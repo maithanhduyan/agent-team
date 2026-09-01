@@ -119,3 +119,17 @@ T07 chạy trước artifact T03–T05):
   renumber T10 ADR-015→ADR-018; restore ADR-015/016/017 bị mất khi merge
   sai → fix commit b6685f4). Điều kiện tạo ĐỢT 2 (T11–T15) đạt 2/2 — tạo ở
   vòng tiếp theo, KHÔNG tạo sớm.
+
+## 8. Kết quả cuối vòng (fix wave #38–#42 hoàn tất)
+
+- **Fix wave merged:** #38 → PR #24 (parseCoreMd FactBlockError), #39 → PR #25
+  (hot-facts decay projection, ADR-019), #40 → PR #26 (pin L3 recency
+  last_observed, ADR-005 addendum), #41 → PR #27 (3 suite defects + golden
+  regen), #42 → PR #28 (searchable-L2 observation-only + provenance_missing).
+- **Kiểm chứng cuối (develop @ 9c9fb8b):** T06 full suite **40/40 PASS /
+  0 FAIL / 0 SKIP** (T03 6/6 · T04 5/5 · T05 6/6 · fixture selfcheck 17,
+  golden 1e-6); unit tests **209/209**; tsc sạch.
+- **T07: ✅ FINAL APPROVE** (issue #33 Closed) — v0.4 Memory Foundation
+  hoàn tất: 15/15 spec §13 + 10/10 guardrails PASS. Tất cả bug #38–#42 Closed.
+- **Phase-2 đợt 1:** T09 (#36) + T10 (#37) APPROVE, PR #19/#21 merged.
+  Điều kiện ĐỢT 2 (T11–T15) đạt 2/2 — tạo ở vòng điều phối tiếp theo.
