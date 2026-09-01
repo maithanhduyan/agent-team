@@ -105,12 +105,12 @@ standard (COV-1: class without cases ⇒ dataset invalid).
 ## 00c. Addendum — Q5 multi-model judge panel (TASK-9657 / Redmine #52): deepseek + gpt-4 + gemini-2.5-pro
 
 > Author: backend (backend@agent-team.local) · Date: 2026-09 · Branch:
-> `backend/TASK-9657-redmine-52-q5-b-t-judge-pane` · Base: PR #34
-> (T12, `backend/TASK-9053-redmine-47-t12-gepa-runner-f` — not yet on
-> `develop`; per the task note the branch stacks on PR #34, no
-> self-merge) · Design: `docs/gepa-pipeline.md` §6–§7 (T09) +
-> `docs/memory-spec.md` §9 (T01) · Security: ADR-010 (SEC-KEY-01..03,
-> SEC-COST-01/02, SEC-LOG-01/02)
+> `backend/TASK-9657-redmine-52-q5-b-t-judge-pane` · Base: started on
+> PR #34 head (T12) per the task note; after PR #34/#35 merged into
+> `develop` (2026-09-01) the branch was **rebased onto the new
+> `develop`** — no self-merge · Design: `docs/gepa-pipeline.md` §6–§7
+> (T09) + `docs/memory-spec.md` §9 (T01) · Security: ADR-010
+> (SEC-KEY-01..03, SEC-COST-01/02, SEC-LOG-01/02)
 
 **What this adds:** the Q5 judge panel activation — the registry key +
 model id for Gemini corrected to the **real API id `gemini-2.5-pro`**
