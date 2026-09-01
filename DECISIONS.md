@@ -18,12 +18,57 @@ the project architecture, or the product scope changes.
 > ba's working number 015 collided with cto's ADR-015). The T11 eval
 > dataset builder PR (TASK-8866 / Redmine #44) adds ADR-020. The T12
 > evolution runner PR (TASK-9053 / Redmine #47) adds ADR-021. The T13
-> candidate-PR workflow PR (TASK-9054 / Redmine #48) adds ADR-022. On merge, keep
+> candidate-PR workflow PR (TASK-9054 / Redmine #48) adds ADR-022. The Q5
+> judge-panel activation PR (TASK-9657 / Redmine #52) adds ADR-023. On
+> merge, keep
 > all sets; the
 > second PR to merge reconciles the file (trivial append). Per the cto
 > ADR-ownership rule (see the TASK-179 version of this file), the cto
 > assigns final numbers on merge; working numbers on branches never
 > collide because each PR appends its own range.
+
+## ADR-023 — Q5 judge-panel activation + real Gemini model id (TASK-9657 / Redmine #52): deepseek + gpt-4 + gemini-2.5-pro
+
+- **Status:** proposed (TASK-9657 / Redmine #52; Q5 — bật judge panel
+  đa model trong pipeline GEPA; contract T01 spec §9 / ADR-017,
+  security ADR-010, T12 runner PR #34)
+- **Date:** 2026-09
+- **Context:** the owner provided `OPENAI_API_KEY` + `GEMINI_API_KEY`
+  (Redmine #50; verified 2026-09-01 — OpenAI 126 models, Gemini 50
+  models). The Gemini API exposes `gemini-2.5-flash` / `gemini-2.5-pro`
+  — there is **no "gemini-3"**; the T05/T12 code + docs used the
+  placeholder registry key `gemini-3` / model id `gemini-3-pro`, which
+  would fail against the real API.
+- **Decision (backend scope):**
+  - Registry key + model id corrected to the real API id
+    **`gemini-2.5-pro`** (`JudgeModelName` union,
+    `Gemini25ProProvider`, `PRICE_TABLE`, `DEFAULT_JUDGE_CAPS`,
+    `cfgKeyFor`, exports). `gpt-4` (`gpt-4`) and `deepseek`
+    (`deepseek-chat`) unchanged.
+  - Price table corrected to real gemini-2.5-pro rates: **$1.25 in /
+    $10.00 out per 1M tokens** (≤200k context, Google AI pricing) —
+    replaces the placeholder 1.25/5.
+  - Env surface unchanged (SEC-COST-01): `JUDGE_PANEL_MODELS` (default
+    `deepseek`), `JUDGE_CAP_DEEPSEEK_USD` $15 / `JUDGE_CAP_GPT4_USD`
+    $10 / `JUDGE_CAP_GEMINI3_USD` $10 — the `_GEMINI3_` spec name is
+    kept and now applies to `gemini-2.5-pro`.
+  - Activation config: `JUDGE_PANEL_MODELS=deepseek,gpt-4,gemini-2.5-pro`
+    (3-model panel). Missing key ⇒ skip (SEC-KEY-03); capped model ⇒
+    auto-disable; all capped ⇒ evolution pauses (SEC-GEPA-09) — never
+    an unjudged write.
+  - Runtime fallback: a model that errors at runtime is removed from
+    the panel for that verdict (R-JUDGE-4) — the pipeline continues
+    with the remaining models (skip, never fail).
+  - New acceptance tool `npm run evolve:judge-real` — runs the REAL
+    3-model panel on 1–2 fixture verdicts, prints per-model verdict +
+    confidence + USD cost; keys from env only, never logged
+    (SEC-KEY-01..03, SEC-LOG-01/02).
+- **Consequences:** the real 3-model panel can run where the keys are
+  injected (docker stack, git-ignored `.env`); mock suites stay green
+  (runner 49, T06 40/40, etc.); docs updated (`gepa-pipeline.md`
+  §6–§7, `memory-spec.md` §9, `security-review-memory.md` §7,
+  `.env.example`, runner README, TESTING.md).
+
 ## ADR-022 — GEPA candidate-PR workflow (T13): branch + PR + human review, no auto-merge, no hot-swap (Redmine #48)
 
 - **Status:** proposed (TASK-9054 / Redmine #48; T13 — workflow skill

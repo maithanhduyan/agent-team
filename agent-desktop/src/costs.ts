@@ -61,7 +61,7 @@ export function monthKeyOf(date: Date): string {
 export const DEFAULT_JUDGE_CAPS: Record<JudgeModelName, number> = {
     deepseek: 15,
     'gpt-4': 10,
-    'gemini-3': 10,
+    'gemini-2.5-pro': 10,
 };
 
 export class CostTracker {

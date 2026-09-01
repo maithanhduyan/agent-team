@@ -93,7 +93,7 @@ test('§9.3: malformed verdict counts as error for that model; consensus any app
 
 test('§9.4 R-JUDGE-2: majority approve (2/3) → approve; tie → reject with disagreement', async () => {
     const approve = mockProvider('deepseek', { kind: 'verdict', name: 'approve' });
-    const reject = mockProvider('gemini-3', { kind: 'verdict', name: 'reject' });
+    const reject = mockProvider('gemini-2.5-pro', { kind: 'verdict', name: 'reject' });
 
     const win = await judgeGate({
         candidate: CANDIDATE,
@@ -154,7 +154,7 @@ test('§9.5 / SEC-COST-01: all models capped → consolidation pauses safely', a
         providers: {
             deepseek: mockProvider('deepseek', { kind: 'verdict', name: 'approve' }, { spentUsd: 15, capUsd: 15 }),
             gpt4: mockProvider('gpt-4', { kind: 'verdict', name: 'approve' }, { spentUsd: 10, capUsd: 10 }),
-            gemini3: mockProvider('gemini-3', { kind: 'verdict', name: 'approve' }, { spentUsd: 10, capUsd: 10 }),
+            gemini3: mockProvider('gemini-2.5-pro', { kind: 'verdict', name: 'approve' }, { spentUsd: 10, capUsd: 10 }),
         },
         consensus: 'any',
     });
@@ -215,11 +215,11 @@ test('resolvePanel orders by JUDGE_PANEL_MODELS and skips disabled/capped models
         {
             deepseek: mockProvider('deepseek', { kind: 'verdict', name: 'approve' }),
             gpt4: mockProvider('gpt-4', { kind: 'verdict', name: 'approve' }, { enabled: false }),
-            gemini3: mockProvider('gemini-3', { kind: 'verdict', name: 'approve' }, { spentUsd: 10, capUsd: 10 }),
+            gemini3: mockProvider('gemini-2.5-pro', { kind: 'verdict', name: 'approve' }, { spentUsd: 10, capUsd: 10 }),
         },
-        { panelModels: ['deepseek', 'gpt-4', 'gemini-3'] },
+        { panelModels: ['deepseek', 'gpt-4', 'gemini-2.5-pro'] },
     );
     assert.deepEqual(panel.map((p) => p.name), ['deepseek']);
     assert.deepEqual(skipped, ['gpt-4']);
-    assert.deepEqual(disabled, ['gemini-3']);
+    assert.deepEqual(disabled, ['gemini-2.5-pro']);
 });

@@ -190,7 +190,7 @@ export {
     // Provider abstraction (spec §9.2, Q5 — ADR-008/ADR-010)
     DeepSeekProvider,
     Gpt4Provider,
-    Gemini3Provider,
+    Gemini25ProProvider,
     registerProvider,
     getProvider,
     listProviders,

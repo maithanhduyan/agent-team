@@ -102,6 +102,88 @@ Mode A so owner-uploaded JSON plugs straight into the T12 gate.
 declares the 4 scenario classes + 12 cases; T11 uses it as the coverage
 standard (COV-1: class without cases ⇒ dataset invalid).
 
+## 00c. Addendum — Q5 multi-model judge panel (TASK-9657 / Redmine #52): deepseek + gpt-4 + gemini-2.5-pro
+
+> Author: backend (backend@agent-team.local) · Date: 2026-09 · Branch:
+> `backend/TASK-9657-redmine-52-q5-b-t-judge-pane` · Base: started on
+> PR #34 head (T12) per the task note; after PR #34/#35 merged into
+> `develop` (2026-09-01) the branch was **rebased onto the new
+> `develop`** — no self-merge · Design: `docs/gepa-pipeline.md` §6–§7
+> (T09) + `docs/memory-spec.md` §9 (T01) · Security: ADR-010
+> (SEC-KEY-01..03, SEC-COST-01/02, SEC-LOG-01/02)
+
+**What this adds:** the Q5 judge panel activation — the registry key +
+model id for Gemini corrected to the **real API id `gemini-2.5-pro`**
+(there is no "gemini-3"; verified 2026-09-01, OpenAI 126 models /
+Gemini 50 models), price table corrected to real gemini-2.5-pro rates
+($1.25 in / $10.00 out per 1M tokens), 3-model panel config
+(`JUDGE_PANEL_MODELS=deepseek,gpt-4,gemini-2.5-pro`), per-model caps
+$15/$10/$10 (`JUDGE_CAP_*_USD`, `_GEMINI3_` name kept per spec §9.5),
+runtime fallback (a failing model is removed from the panel — skip,
+never fail) and the acceptance tool `npm run evolve:judge-real` (real
+3-model run, per-model verdict + confidence + USD cost, keys from env
+only — never printed). It **does not** modify the T06 memory suite
+(still 40/40, verified below).
+
+**Mock suite (no money — providers are mocks):**
+
+| Suite | Result | Notes |
+|---|---|---|
+| runner (`npm run test:runner`) | **49/49** | was 46/46 — added 3 mock tests: (1) gemini-2.5-pro at its $10 cap auto-disables, panel continues; (2) full 3-model panel runs + per-model cost report (names + USD only, no keys); (3) runtime fallback — gpt-4 errors ⇒ auto-removed, deepseek + gemini-2.5-pro still decide (skip, never fail) |
+| provider/costs/judge (`npm test` subset) | 31/31 | llm-provider (Gemini25ProProvider), costs (default caps `gemini-2.5-pro: 10`), judge |
+| T06 full suite (regression) | **40/40** | unchanged |
+| T11 dataset builder | 27/27 | unchanged |
+| T14 harness selfcheck | 9/9 | unchanged |
+| T12 sidecar (Python) | 27/27 | unchanged |
+| typecheck ×2 (`tsc --noEmit`, `typecheck:evolution`) | clean | |
+
+Key acceptance criteria covered by mock tests (no API spend):
+1. ✅ Cost cap per model $15/$10/$10: capped model ⇒ auto-disable;
+   all capped ⇒ gate `paused` — never an unjudged write (SEC-GEPA-09),
+   no cap override.
+2. ✅ Missing key ⇒ model skipped (SEC-KEY-03, skip never fail);
+   DeepSeek-only default still runs the pipeline.
+3. ✅ Runtime fallback: one model errors ⇒ removed from the panel,
+   pipeline continues with the remaining models.
+4. ✅ Full 3-model panel (deepseek + gpt-4 + gemini-2.5-pro) produces a
+   gate + per-model verdicts + per-model USD cost — no keys anywhere
+   (SEC-KEY-02, SEC-LOG-02).
+
+**Real 3-model run (acceptance criterion 3):**
+
+```bash
+cd agent-desktop
+npm run evolve:judge-real -- --models deepseek,gpt-4,gemini-2.5-pro          # human table
+npm run evolve:judge-real -- --models deepseek,gpt-4,gemini-2.5-pro --json   # JSON for issue/PR
+```
+
+Keys are read from the environment only (`DEEPSEEK_API_KEY` /
+`OPENAI_API_KEY` / `GEMINI_API_KEY` — injected into every agent
+container via the docker stack, git-ignored `.env`); the report
+contains model ids, verdicts, confidence and USD amounts only. Exit
+codes: `0` verdict produced · `2` paused (all capped) · `3` no
+provider enabled / usage error.
+
+**Real-run result on this branch:** ⚠️ the backend sandbox for this
+task does **not** export the API keys (checked: `OPENAI_API_KEY`,
+`GEMINI_API_KEY`, `DEEPSEEK_API_KEY` all unset; no docker access), so
+the live 3-model call could not be executed here. The tool is
+implemented + smoke-checked: without keys it fails cleanly (exit 3,
+"no judge provider enabled — keys are never logged"), with **zero**
+key material printed. The real run must be executed inside the docker
+stack (where the keys are injected) and its USD report appended to
+this section / the PR. Command + fixtures are ready (`evolution/
+runner/fixtures/judge-real/`). No key value was ever written to git,
+logs or artifacts (SEC-KEY-01..03, SEC-LOG-01/02).
+
+**CLI smoke checks (all exit codes verified on this branch):**
+
+```bash
+npm run evolve:judge-real -- --help                          # usage, exit 0
+npm run evolve:judge-real -- --models deepseek,gpt-4,gemini-2.5-pro   # exit 3 (no keys), no secrets printed
+npm run evolve:judge-real -- --models deepseek,gpt-4,gemini-2.5-pro --json   # JSON report, exit 3
+```
+
 ## 0. Addendum — Redmine #42 backend fix (TASK-7805): suite now 40/40
 
 > Author: backend (backend@agent-team.local) · Date: 2026-09 · Branch:

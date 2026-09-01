@@ -50,7 +50,7 @@ sessions. This spec defines:
 5. The **mandatory guardrails**: provenance, anti-poisoning,
    anti-conflict (`valid_from`/`valid_to`), decay / anti-drift (Day-30).
 6. The **multi-model judge gate contract** (Q5): a "reflection/judge
-   team" panel (gpt-4 / gemini-3 / deepseek) behind a provider
+   team" panel (gpt-4 / gemini-2.5-pro / deepseek) behind a provider
    abstraction, with per-model cost caps and enable/disable config
    (default: DeepSeek only).
 
@@ -595,8 +595,8 @@ owner's Q5 decision (Redmine #22 note 2026-08-31), the judge team is
 | Model | Provider | API key | Default state |
 |---|---|---|---|
 | `deepseek` | DeepSeek | `DEEPSEEK_API_KEY` — **already available** | **enabled (default)** |
-| `gpt-4` | OpenAI | `OPENAI_API_KEY` — owner to provide (⏳) | disabled until key present |
-| `gemini-3` | Google | `GEMINI_API_KEY` — owner to provide (⏳) | disabled until key present |
+| `gpt-4` | OpenAI | `OPENAI_API_KEY` — ✅ provided 2026-09-01 (Redmine #50) | enabled when key present |
+| `gemini-2.5-pro` | Google — **real API id `gemini-2.5-pro`** (no "gemini-3" exists on the API; corrected Redmine #52) | `GEMINI_API_KEY` — ✅ provided 2026-09-01 (Redmine #50) | enabled when key present |
 
 ### 9.2 Provider abstraction (contract for T03/T05)
 
@@ -609,7 +609,7 @@ remaining ones.
 ```ts
 // Contract sketch (implementation language: Node/TS native per Q4)
 interface LLMProvider {
-  readonly name: "deepseek" | "gpt-4" | "gemini-3";   // registry key
+  readonly name: "deepseek" | "gpt-4" | "gemini-2.5-pro"; // registry key
   readonly modelId: string;                            // provider model name
   generate(req: {
     prompt: string;

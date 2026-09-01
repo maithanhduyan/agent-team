@@ -183,10 +183,13 @@ export function normalizeConsolidationConfig(
         if (typeof caps['gpt-4'] === 'number') judgeCaps['gpt-4'] = caps['gpt-4'];
     }
     if (readNum(r, 'JUDGE_CAP_GEMINI3_USD', 'gemini3') !== undefined) {
-        judgeCaps['gemini-3'] = readNum(r, 'JUDGE_CAP_GEMINI3_USD', 'gemini3')!;
+        judgeCaps['gemini-2.5-pro'] = readNum(r, 'JUDGE_CAP_GEMINI3_USD', 'gemini3')!;
     } else if (typeof r.judgeCaps === 'object' && r.judgeCaps !== null) {
         const caps = r.judgeCaps as Record<string, number>;
-        if (typeof caps['gemini-3'] === 'number') judgeCaps['gemini-3'] = caps['gemini-3'];
+        // Registry key is `gemini-2.5-pro` (Q5, Redmine #52); accept the
+        // legacy `gemini-3` spelling from pre-activation records too.
+        const geminiCap = caps['gemini-2.5-pro'] ?? caps['gemini-3'];
+        if (typeof geminiCap === 'number') judgeCaps['gemini-2.5-pro'] = geminiCap;
     }
     const refNowRaw = r.refNow;
     const refNow = typeof refNowRaw === 'string' ? refNowRaw : undefined;

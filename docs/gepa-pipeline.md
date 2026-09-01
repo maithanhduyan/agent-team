@@ -364,8 +364,8 @@ model + module bật/tắt được") and ADR-008/ADR-010.
 | Model | Provider | API key | Default state |
 |---|---|---|---|
 | `deepseek` | DeepSeek (`deepseek-chat`) | `DEEPSEEK_API_KEY` — ✅ **available** | **enabled (default)** |
-| `gpt-4` | OpenAI | `OPENAI_API_KEY` — ⏳ **owner must provide** | disabled until key present |
-| `gemini-3` | Google (`gemini-3-pro`) | `GEMINI_API_KEY` — ⏳ **owner must provide** | disabled until key present |
+| `gpt-4` | OpenAI | `OPENAI_API_KEY` — ✅ **provided 2026-09-01** (Redmine #50) | enabled when key present |
+| `gemini-2.5-pro` | Google — real API id **`gemini-2.5-pro`** (there is **no** "gemini-3" on the API) | `GEMINI_API_KEY` — ✅ **provided 2026-09-01** (Redmine #50) | enabled when key present |
 
 - **Enable/disable config:** `JUDGE_PANEL_MODELS` (default
   `deepseek`) — comma-separated, priority order; a model is skipped
@@ -403,8 +403,8 @@ gates (size/test/semantic) before PR eligibility:
 | Key | Needed for | When required |
 |---|---|---|
 | `DEEPSEEK_API_KEY` | DeepSeek judge (default) | ✅ present — stack default |
-| `OPENAI_API_KEY` | gpt-4 judge module | ⏳ owner provides → module auto-activates |
-| `GEMINI_API_KEY` | gemini-3 judge module | ⏳ owner provides → module auto-activates |
+| `OPENAI_API_KEY` | gpt-4 judge module | ✅ provided 2026-09-01 (Redmine #50) — module auto-activates |
+| `GEMINI_API_KEY` | gemini-2.5-pro judge module | ✅ provided 2026-09-01 (Redmine #50) — module auto-activates |
 
 **Behavior when a key is missing:** the corresponding module stays
 disabled and is **skipped** (SEC-KEY-03); the panel runs with
@@ -413,7 +413,30 @@ keys are missing / all models capped:** no enabled judge → the gate
 returns `paused`/`error` and evolution **pauses safely** — never an
 unjudged write (SEC-COST-01, §7.3). Keys live in env / `.env`
 (gitignored) only; never in memory files, logs, PR bodies, Redmine
-comments, or artifacts (SEC-KEY-01, SEC-LOG-01/02).
+comments, or artifacts (SEC-KEY-01, SEC-LOG-01/02). Keys are injected
+into every agent container via the docker stack (compose
+`environment:` + git-ignored `.env`) — the repo never carries key
+values.
+
+### 6.4 Real multi-model run (Q5 activation — Redmine #52)
+
+Once all three keys are present, the real panel is
+`JUDGE_PANEL_MODELS=deepseek,gpt-4,gemini-2.5-pro`. The acceptance
+tool runs the REAL 3-model panel on 1–2 fixture verdicts and reports
+per-model verdict + confidence + USD cost (no keys ever printed):
+
+```bash
+cd agent-desktop
+npm run evolve:judge-real -- --models deepseek,gpt-4,gemini-2.5-pro
+# JSON report for the issue/PR: add --json
+npm run evolve:judge-real -- --models deepseek,gpt-4,gemini-2.5-pro --json
+```
+
+Exit codes: `0` = panel produced a verdict (report printed), `2` =
+paused (all models capped, SEC-GEPA-09), `3` = no provider enabled
+(keys missing) or usage error. Spend accumulates in
+`evolution/runs/judge-real/costs-YYYYMM.json` (SEC-COST-01: model +
+USD only, no keys).
 
 ## 7. Cost cap (SEC-GEPA-09)
 
@@ -426,7 +449,7 @@ Per-model monthly caps (defaults, spec §9.5 — shared with T05):
 |---|---|
 | `deepseek` | `$15` |
 | `gpt-4` | `$10` |
-| `gemini-3` | `$10` |
+| `gemini-2.5-pro` | `$10` |
 | **Sum** | **$35** — inside the $30–50 baseline |
 
 Caps are env-configurable (`JUDGE_CAP_*_USD`); GEPA and consolidation
@@ -485,9 +508,9 @@ the GEPA/evolution block (documented in `.env.example`):
 | `EVOLUTION_MIN_COVERAGE` | `0.8` | dataset coverage criterion (T10/T11) |
 | `EVOLUTION_RUNS_DIR` | `<root>/evolution/runs` | audit-trail manifests (SEC-GEPA-11) |
 | `EVOLUTION_SANDBOX_IMAGE` | pinned digest | sidecar image (SEC-GEPA-10) |
-| `JUDGE_PANEL_MODELS` | `deepseek` | panel priority order (shared, Q5) |
+| `JUDGE_PANEL_MODELS` | `deepseek` | panel priority order (shared, Q5) — Q5 activation (Redmine #52): `deepseek,gpt-4,gemini-2.5-pro` |
 | `JUDGE_CONSENSUS` | `any` | `any` \| `majority` (shared) |
-| `JUDGE_CAP_DEEPSEEK_USD` / `_GPT4_` / `_GEMINI3_` | 15 / 10 / 10 | per-model monthly caps (shared, SEC-GEPA-09) |
+| `JUDGE_CAP_DEEPSEEK_USD` / `_GPT4_` / `_GEMINI3_` | 15 / 10 / 10 | per-model monthly caps (shared, SEC-GEPA-09) — `_GEMINI3_` name kept (spec §9.5) and applies to the `gemini-2.5-pro` model |
 
 ## 10. Implementation plan handoff (T11–T15)
 

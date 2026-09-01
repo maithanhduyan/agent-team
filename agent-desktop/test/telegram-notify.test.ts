@@ -33,7 +33,7 @@ function makeSpend(): CostMonthFile {
         providers: {
             deepseek: { spentUsd: 0.42, capUsd: 15, disabled: false },
             'gpt-4': { spentUsd: 0, capUsd: 10, disabled: true },
-            'gemini-3': { spentUsd: 0, capUsd: 10, disabled: true },
+            'gemini-2.5-pro': { spentUsd: 0, capUsd: 10, disabled: true },
         },
     };
 }

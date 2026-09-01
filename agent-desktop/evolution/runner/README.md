@@ -40,7 +40,7 @@ evolution/
 │   │   ├── manifest.ts            # SEC-GEPA-11 run manifest writer
 │   │   ├── run.ts                 # run orchestrator
 │   │   └── cli.ts                 # CLI entry
-│   └── test/                      # 46 tests (config/guardrails/fitness/judge/manifest/sidecar/e2e)
+│   └── test/                      # 49 tests (config/guardrails/fitness/judge/manifest/sidecar/e2e)
 ├── sidecar/                       # Python GEPA core (DSPy+GEPA, hermes pattern)
 │   ├── gepa_sidecar/              #   stdlib-only package (protocol/config/lms/modules/evolution)
 │   ├── requirements.txt           #   SEC-GEPA-10 pinning (dspy optional)
@@ -63,8 +63,15 @@ EVOLUTION_GENERATIONS=1 EVOLUTION_POPULATION_SIZE=3 EVOLUTION_ELITISM=1 \
 npm run evolve:run -- --job evo_20260901_001
 
 # With a real judge (DeepSeek default): export DEEPSEEK_API_KEY and do
-# NOT set EVOLUTION_JUDGE_DRY_RUN. gpt-4/gemini-3 activate when the
-# owner provides OPENAI_API_KEY / GEMINI_API_KEY (Q5, ADR-010).
+# NOT set EVOLUTION_JUDGE_DRY_RUN. gpt-4/gemini-2.5-pro are active
+# since 2026-09-01 (owner provided OPENAI_API_KEY / GEMINI_API_KEY —
+# Q5, Redmine #50); full panel:
+#   JUDGE_PANEL_MODELS=deepseek,gpt-4,gemini-2.5-pro npm run evolve:run ...
+# Gemini model id is the REAL API id `gemini-2.5-pro` (no "gemini-3").
+
+# Real 3-model judge panel on fixture verdicts (acceptance tool,
+# Redmine #52 — keys from env only, USD report, no keys printed):
+npm run evolve:judge-real -- --models deepseek,gpt-4,gemini-2.5-pro
 ```
 
 The run writes `evolution/runs/<job_id>/manifest.json` (0600 —
@@ -74,7 +81,7 @@ SEC-GEPA-11 audit trail, gitignored).
 
 ```bash
 cd agent-desktop
-npm run test:runner     # 46 Node/TS tests (mock providers, harness gate, e2e)
+npm run test:runner     # 49 Node/TS tests (mock providers, harness gate, e2e)
 npm run test:sidecar    # 27 Python unittest tests
 npm run typecheck:evolution
 ```

@@ -41,7 +41,7 @@ function makeMemoryDeps(overrides: Partial<MemoryCommandDeps> = {}): MemoryComma
         hotFacts: async () => [],
         spend: () => ({
             month: '2026-09',
-            providers: { deepseek: { spentUsd: 0.42, capUsd: 15, disabled: false }, 'gpt-4': { spentUsd: 0, capUsd: 10, disabled: false }, 'gemini-3': { spentUsd: 0, capUsd: 10, disabled: false } },
+            providers: { deepseek: { spentUsd: 0.42, capUsd: 15, disabled: false }, 'gpt-4': { spentUsd: 0, capUsd: 10, disabled: false }, 'gemini-2.5-pro': { spentUsd: 0, capUsd: 10, disabled: false } },
         }),
         ...overrides,
     };

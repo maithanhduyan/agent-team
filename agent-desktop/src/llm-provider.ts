@@ -18,8 +18,10 @@
  *   (`redact.ts`).
  *
  * Default panel is `deepseek` only (its key is available); `gpt-4` and
- * `gemini-3` activate the moment `OPENAI_API_KEY` / `GEMINI_API_KEY`
- * are provided by the owner (Q5).
+ * `gemini-2.5-pro` activate the moment `OPENAI_API_KEY` / `GEMINI_API_KEY`
+ * are provided by the owner (Q5 — both provided on 2026-09-01, Redmine
+ * #50; verified: OpenAI 126 models, Gemini 50 models — real model id
+ * `gemini-2.5-pro`, there is no "gemini-3" on the API).
  */
 
 import { parseJudgePanelModels, type MemoryConfig } from './config.js';
@@ -27,7 +29,7 @@ import { redactSecrets } from './redact.js';
 import type { CostTracker } from './costs.js';
 
 /** Registry keys of the judge panel (§9.2 table). */
-export type JudgeModelName = 'deepseek' | 'gpt-4' | 'gemini-3';
+export type JudgeModelName = 'deepseek' | 'gpt-4' | 'gemini-2.5-pro';
 
 /** The uniform provider contract (spec §9.2). */
 export interface LLMProvider {
@@ -62,11 +64,13 @@ export interface PriceTable {
     outputPerM: number;
 }
 
-/** Shipped price tables. Values are documented constants (ADR-013). */
+/** Shipped price tables. Values are documented constants (ADR-013);
+ * gemini-2.5-pro = $1.25 in / $10.00 out per 1M tokens (≤200k context,
+ * Google AI pricing — corrected from the T05 "gemini-3" placeholder). */
 export const PRICE_TABLE: Record<JudgeModelName, PriceTable> = {
     deepseek: { inputPerM: 0.27, outputPerM: 1.1 },
     'gpt-4': { inputPerM: 30, outputPerM: 60 },
-    'gemini-3': { inputPerM: 1.25, outputPerM: 5 },
+    'gemini-2.5-pro': { inputPerM: 1.25, outputPerM: 10 },
 };
 
 /** Compute the USD cost of a completion from the price table. */
@@ -289,12 +293,14 @@ function parseGeminiCompletion(data: unknown): { text: string; usage: { inputTok
 }
 
 /**
- * gemini-3 provider (disabled until `GEMINI_API_KEY` is provided — Q5).
- * The key goes in the `x-goog-api-key` header (never in the URL, so it
- * can never leak into a logged URL — SEC-KEY-01).
+ * gemini-2.5-pro provider (disabled until `GEMINI_API_KEY` is provided —
+ * Q5; key provided 2026-09-01). The key goes in the `x-goog-api-key`
+ * header (never in the URL, so it can never leak into a logged URL —
+ * SEC-KEY-01). Model id is the REAL API id `gemini-2.5-pro` (there is
+ * no "gemini-3" on the Gemini API).
  */
-export class Gemini3Provider implements LLMProvider {
-    readonly name = 'gemini-3' as const;
+export class Gemini25ProProvider implements LLMProvider {
+    readonly name = 'gemini-2.5-pro' as const;
     readonly modelId: string;
     private readonly apiKey: string | undefined;
     private readonly env: NodeJS.ProcessEnv;
@@ -302,7 +308,7 @@ export class Gemini3Provider implements LLMProvider {
     private readonly fetchImpl: typeof fetch;
     private readonly log: Pick<Console, 'warn' | 'info' | 'debug'>;
 
-    constructor(modelId = 'gemini-3-pro', opts: ProviderOptions = {}) {
+    constructor(modelId = 'gemini-2.5-pro', opts: ProviderOptions = {}) {
         this.modelId = modelId;
         this.env = opts.env ?? process.env;
         this.apiKey = opts.apiKey ?? this.env.GEMINI_API_KEY;
@@ -325,7 +331,7 @@ export class Gemini3Provider implements LLMProvider {
         maxTokens?: number;
     }): Promise<{ text: string; usage: { inputTokens: number; outputTokens: number }; costUsd: number }> {
         if (!this.isEnabled()) {
-            throw new Error('gemini-3 provider is not enabled (GEMINI_API_KEY missing)');
+            throw new Error('gemini-2.5-pro provider is not enabled (GEMINI_API_KEY missing)');
         }
         const res = await this.fetchImpl(
             `https://generativelanguage.googleapis.com/v1beta/models/${this.modelId}:generateContent`,
@@ -355,7 +361,7 @@ export class Gemini3Provider implements LLMProvider {
             throw new Error(`provider HTTP ${res.status}: ${redactSecrets(text).slice(0, 300)}`);
         }
         const parsed = parseGeminiCompletion(data);
-        this.log.debug?.(`[judge] gemini-3 ${this.modelId} HTTP ${res.status} tokens=${parsed.usage.inputTokens}+${parsed.usage.outputTokens}`);
+        this.log.debug?.(`[judge] gemini-2.5-pro ${this.modelId} HTTP ${res.status} tokens=${parsed.usage.inputTokens}+${parsed.usage.outputTokens}`);
         return { text: parsed.text, usage: parsed.usage, costUsd: completionCostUsd(this.name, parsed.usage) };
     }
 }
@@ -392,7 +398,7 @@ export function defaultProviders(opts: ProviderOptions = {}): LLMProvider[] {
     return [
         new DeepSeekProvider('deepseek-chat', { ...opts, costTracker: tracker }),
         new Gpt4Provider('gpt-4', { ...opts, costTracker: tracker }),
-        new Gemini3Provider('gemini-3-pro', { ...opts, costTracker: tracker }),
+        new Gemini25ProProvider('gemini-2.5-pro', { ...opts, costTracker: tracker }),
     ];
 }
 

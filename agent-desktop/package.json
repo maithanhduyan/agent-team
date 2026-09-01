@@ -24,6 +24,7 @@
     "eval:scan": "node --import tsx evolution/src/secret-scan.ts",
     "evolve:run": "node --import tsx evolution/runner/src/cli.ts",
     "evolve:run:built": "node dist/evolution/runner/src/cli.js",
+    "evolve:judge-real": "node --import tsx evolution/runner/src/judge-real.ts",
     "test:runner": "node --import tsx --test evolution/runner/test/*.test.ts",
     "test:sidecar": "PYTHONPATH=evolution/sidecar python3 -m unittest discover -s evolution/sidecar/tests -q",
     "test:workflow": "node --import tsx --test evolution/workflow/test/*.test.ts",
