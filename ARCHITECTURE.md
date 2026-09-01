@@ -386,7 +386,10 @@ ADR-016 (fitness gate), ADR-017 (judge team + cost cap).
   in Node (size ≤ 15 KB, semantic preservation, test suite 100%) →
   fitness gate (weighted pass rate, threshold 1.0) → Q5 judge panel →
   branch + PR → human review (owner + cto; **no auto-merge**, no
-  hot-swap).
+  hot-swap). The candidate → branch → PR → human-review workflow is
+  implemented in `agent-desktop/evolution/workflow/` (T13, ADR-022 —
+  BR-1 dedicated branch per candidate, BR-2 branch content, §6.2 PR
+  metadata, SEC-GEPA-05/06/07 enforcement).
 - **Fitness gate (install-dsh, harness T14):**
   `fitness(c) = Σ(wᵢ·passᵢ)/Σwᵢ ∈ [0,1]`; acceptance = **100% pass**
   on the full suite (SEC-GEPA-02) + no regression vs base skill

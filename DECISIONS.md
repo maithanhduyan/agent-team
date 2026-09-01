@@ -17,12 +17,61 @@ the project architecture, or the product scope changes.
 > PR (TASK-7214 / Redmine #37) adds ADR-018 (renumbered on merge by pm —
 > ba's working number 015 collided with cto's ADR-015). The T11 eval
 > dataset builder PR (TASK-8866 / Redmine #44) adds ADR-020. The T12
-> evolution runner PR (TASK-9053 / Redmine #47) adds ADR-021. On merge, keep
+> evolution runner PR (TASK-9053 / Redmine #47) adds ADR-021. The T13
+> candidate-PR workflow PR (TASK-9054 / Redmine #48) adds ADR-022. On merge, keep
 > all sets; the
 > second PR to merge reconciles the file (trivial append). Per the cto
 > ADR-ownership rule (see the TASK-179 version of this file), the cto
 > assigns final numbers on merge; working numbers on branches never
 > collide because each PR appends its own range.
+## ADR-022 — GEPA candidate-PR workflow (T13): branch + PR + human review, no auto-merge, no hot-swap (Redmine #48)
+
+- **Status:** proposed (TASK-9054 / Redmine #48; T13 — workflow skill
+  evolved → branch → PR → human review; contract T09 §3.3 D6 / §8,
+  T10 §6/§7, SEC-GEPA-05/06/07)
+- **Date:** 2026-09
+- **Context:** T12 produces merge-ready candidates + a replayable run
+  manifest (SEC-GEPA-11). T13 must turn a candidate into a dedicated
+  branch + PR into the skill registry with full §6.2 metadata, human
+  review (owner + cto), and the security invariants: no auto-merge
+  (SEC-GEPA-07), no hot-swap into a live session (SEC-GEPA-05).
+- **Decision (backend scope):**
+  - **Branch per candidate (BR-1):** `evolution/<skill>/<run-id>-<candidate>`
+    created from `develop` in a throwaway worktree; candidates never
+    commit to `develop`. Branch content (BR-2) is limited to the
+    candidate `SKILL.md`, the dataset version reference
+    (`dataset.ref.json` — id + version + sha256, COV-3), and the run
+    audit record (`run-audit-record.json`).
+  - **Gates before PR (T10 §7.2):** only `completed` runs with verdict
+    `merge-ready` and `accepted` candidates are eligible; the workflow
+    re-checks size ≤ 15 360 bytes (SEC-GEPA-03), A/B regression = 0
+    (SEC-GEPA-04, recomputed via the T12 deterministic behavior proxy),
+    fitness = 100% (SEC-GEPA-02) and 0 secret-scan hits (SEC-GEPA-08) —
+    any failure ⇒ reject, no PR.
+  - **PR metadata (T10 §6.2):** the PR body embeds a machine-readable
+    block (run id + dataset version + dataset sha256 · fitness · size ·
+    regression diff · guardrail checklist SEC-GEPA-01..11 · cost report
+    per model without keys · candidate diff); `check-metadata`
+    auto-flags a PR missing any field (BR-3, gate fail).
+  - **Human review (SEC-GEPA-06):** merge requires 2 explicit approvals
+    — owner AND cto — recorded on the PR; `check-approvals` refuses
+    merge with fewer than 2 (R-7). The workflow (and its GitHub client)
+    exposes **no merge endpoint** (SEC-GEPA-07); `no-auto-merge` scans
+    sources structurally. Merge is a manual human action.
+  - **No hot-swap (SEC-GEPA-05):** activation reads **merged registry
+    state only** (`<registryDir>/registry-state.json`, regenerated after
+    a human merge); an unmerged candidate hash is refused by the runtime
+    resolver (R-6) — proven by a runtime test.
+  - **Audit trail (AT-2/AT-3):** T12's runner now persists candidate
+    SKILL.md under `runs/<job_id>/candidates/<candidate_id>/` and sets
+    `skill_path` in the manifest (replayability); after opening a PR the
+    workflow writes the PR link back into the run manifest.
+- **Consequences:** T15 reviews candidate PRs against this workflow +
+  the manifest; T19 gates releases on the audit trail. Candidate PRs
+  are opened by the workflow but never merged by it — the owner/cto
+  merge manually and the registry state is regenerated afterwards.
+  Implemented + tested in `agent-desktop/evolution/workflow/` (48 tests).
+
 ## ADR-020 — Eval dataset builder (T11): source contracts, layout, immutability (Redmine #44)
 
 - **Status:** proposed (TASK-8866 / Redmine #44; T11 — eval dataset

@@ -478,6 +478,34 @@ unified result JSON schema, shared fitness function, and two run modes
 
 See [`evolution/harness/README.md`](evolution/harness/README.md).
 
+## GEPA candidate-PR workflow (T13, v0.5)
+
+The **PR workflow** ([`evolution/workflow/`](evolution/workflow/README.md))
+turns a merge-ready candidate from a T12 evolution run into a dedicated
+branch + PR into the skill registry, with the full §6.2 metadata
+(run id + dataset sha256 · fitness · size · regression diff ·
+guardrail checklist SEC-GEPA-01…11 · cost report · candidate diff) and
+the human-review gates:
+
+- **BR-1/BR-2** — each candidate goes to
+  `evolution/<skill>/<run-id>-<candidate>`; the branch contains only the
+  candidate `SKILL.md` + dataset version reference + run audit record.
+- **SEC-GEPA-05/06/07** — the workflow never merges (no merge path
+  exists) and never activates a candidate; merge requires **owner AND
+  cto approvals** on the PR and is a manual human action; activation
+  reads merged registry state only (runtime-tested).
+- **Gates before PR** — size ≤ 15 KB, A/B regression = 0, fitness 100%,
+  no secrets; any failure rejects the candidate (no PR).
+
+```bash
+npm run test:workflow         # T13 workflow test suite (48 tests)
+npm run evolve:pr -- plan --manifest <run.json> --candidate <id>   # plan only
+npm run evolve:pr -- check-metadata <pr-body.md>                    # §6.2 auto-flag
+npm run evolve:pr -- check-approvals <reviews.json> --owner <login> --cto <login>
+```
+
+See [`evolution/workflow/README.md`](evolution/workflow/README.md).
+
 > Status note (PM, TASK-7174): T06 fixtures were authored before the
 > backend PRs (#14–#17) merged; the implementation suites were skip-aware
 > because the probe paths predated the TS implementation. With T03/T04/T05
