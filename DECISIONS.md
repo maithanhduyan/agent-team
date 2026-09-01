@@ -22,6 +22,32 @@ the project architecture, or the product scope changes.
 > assigns final numbers on merge; working numbers on branches never
 > collide because each PR appends its own range.
 
+## ADR-020 — Phase-2 đợt 2 creates GEPA implementation tasks in TWO waves (anti-early-dispatch, Redmine #43)
+
+- **Status:** accepted (TASK-8837 / Redmine #43; pm — execution policy for
+  v0.5 Skill Evolution đợt 2, T11–T15)
+- **Date:** 2026-09-01
+- **Context:** the orchestrator's Redmine sync auto-imports and
+  **auto-dispatches** any new issue with subject `[<agent>] …` the moment
+  it is created (observed in TASK-7174 / Redmine #35 — T10 ran before T09,
+  T07 ran before its artifacts). Phase-2 đợt 1 (T09/T10) is approved and
+  merged (PR #19/#21), so đợt 2 (T11–T15) may now be opened — but
+  dispatching all of them immediately would repeat the early-dispatch bug.
+- **Decision:** create đợt 2 **theo 2 sóng**:
+  - **SÓNG 2a (create + dispatch now):** T11 (eval dataset builder,
+    backend) and T14 (Windows Sandbox harness, tester) — dependencies
+    (T09/T10) already satisfied.
+  - **SÓNG 2b (NOT created now):** T12 (GEPA runner + fitness gate) and
+    T13 (evolved-skill PR workflow) — created only **after T11 has a PR**,
+    in the next coordination round; T15 (review) only after T12/T13 have
+    artifacts. The condition is written into the issue note so a later
+    coordinator creates them at the right time.
+- **Consequences:** fewer concurrent runs, reviewable order (dataset →
+  harness → runner → workflow → review); the sync auto-dispatch remains a
+  hazard — any manually created task that duplicates a sync-import is
+  deleted (TASK-8862/8863 deleted in TASK-8837; canonical tasks are the
+  sync-imported TASK-8866/TASK-8867 with `redmine_issue_id` 44/45).
+
 ## ADR-019 — T04 hot-fact injection applies the Day-30 decay projection read-time (Redmine #39)
 
 - **Status:** accepted (TASK-7437 / Redmine #39; T04 bugfix on top of
