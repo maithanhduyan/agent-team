@@ -5,6 +5,56 @@
 > Spec: `docs/memory-spec.md` §13 (acceptance mapping) · Security: `docs/security-review-memory.md` SEC-MEM-01/02
 > Branch: `tester/TASK-7439-redmine-41-bug-t06-suite-fix` · Base: `develop`
 
+## 00b. Addendum — T13 GEPA candidate-PR workflow (TASK-9054 / Redmine #48): branch → PR → human review
+
+> Author: backend (backend@agent-team.local) · Date: 2026-09 · Branch:
+> `backend/TASK-9054-redmine-48-t13-workflow-skil` · Base: `develop`
+> Design: `docs/gepa-pipeline.md` §3.3 D6 / §8 (T09) · Acceptance:
+> `docs/skill-evolution-acceptance.md` §6/§7 (T10) · Security:
+> `docs/security-review-memory.md` §5 (SEC-GEPA-01…11)
+
+**What this adds:** the candidate → branch → PR → human-review workflow
+— `agent-desktop/evolution/workflow/` (see
+[`evolution/workflow/README.md`](evolution/workflow/README.md)): per-candidate
+dedicated branch (`evolution/<skill>/<run-id>-<candidate>`, BR-1), branch
+contains only SKILL.md + dataset version reference + run audit record
+(BR-2), PR with the full §6.2 metadata (auto-flagged when missing,
+BR-3), 2-approval review gate (owner + cto, SEC-GEPA-06), no auto-merge
+path (SEC-GEPA-07), no-hot-swap activation guard (SEC-GEPA-05), and the
+run-record ↔ PR audit link (AT-3). It **does not** modify the T06 memory
+suite (still 40/40, verified below).
+
+**Test suite** (`npm run test:workflow`): **48/48 pass**
+
+| Area | Tests | What they prove |
+|---|---|---|
+| size (SEC-GEPA-03) | 4 | ≤ 15 360 bytes fixed; boundary 15360 pass / 15361 reject |
+| ab (SEC-GEPA-04) | 3 | A/B base vs candidate: fixture 12/12 fitness 1.0, 0 regressions; dropped-EFS candidate regresses; deterministic (CG-1) |
+| activation (SEC-GEPA-05) | 8 | **runtime test:** unmerged candidate is NOT activatable in a live session; merged candidate IS (between sessions); fail-closed empty state; run manifests/candidates are not valid activation inputs |
+| review (SEC-GEPA-06/07) | 8 | 2 approvals owner+cto required, < 2 refused (R-7); third-party/CHANGES_REQUESTED don't count; workflow + runner sources have **0 auto-merge hits** (R-8); synthetic merge action detected |
+| metadata (§6.2 + auto-flag) | 7 | all §6.2 fields present; guardrail checklist SEC-GEPA-01..11 pass/fail + evidence; cost report without keys; missing metadata block ⇒ auto-flag (BR-3); oversized/failed guardrail ⇒ invalid |
+| open-pr (BR-1/BR-2/gates) | 13 | branch name pattern; exactly 3 branch files; non-merge-ready/rejected/oversized/secret candidates REJECTED (no PR); dry-run makes no git/network changes; AT-3 manifest link; github client has no merge endpoint |
+| config | 5 | owner/repo parsed from https / token-embedded / ssh remotes; defaults + env overrides |
+| T12 integration | 1 | real MockLM run persists candidate SKILL.md (`skill_path`, AT-2); workflow gates the run verdict (merge-ready ⇒ valid plan, else refused) |
+
+**CLI smoke checks (all exit codes verified):**
+
+```bash
+npm run evolve:pr -- plan --manifest <run.json> --candidate <id>   # plan (no git/network)
+npm run evolve:pr -- size evolution/workflow/test/fixtures/candidates/gen0-01/SKILL.md  # PASS
+npm run evolve:pr -- ab <candidate.md>                              # PASS (12/12, 0 regressions)
+npm run evolve:pr -- no-auto-merge                                 # PASS (0 hits in src)
+npm run evolve:pr -- check-metadata <pr-body.md>                    # PASS (full §6.2 block)
+npm run evolve:pr -- check-approvals <reviews.json> --owner <login> --cto <login>
+npm run evolve:pr -- activation <registry-state.json> <skill> <sha256>  # merged ⇒ ALLOW, unmerged ⇒ REFUSED
+```
+
+**Cross-suite regression (unchanged):** T06 memory suite **40/40** ·
+full repo suite **209/209** · T11 dataset builder **27/27** · T14 harness
+selfcheck **9/9** · T12 runner **46/46** · T12 sidecar **27/27**
+(`test:sidecar` now sets `PYTHONPATH=evolution/sidecar` so the documented
+command reproduces the 27 tests).
+
 ## 00. Addendum — T14 GEPA eval harness (TASK-8867 / Redmine #45): Mode A 12/12 + planted-failure detection
 
 > Author: tester (tester@agent-team.local) · Date: 2026-09 · Branch:
