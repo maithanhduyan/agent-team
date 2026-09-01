@@ -94,10 +94,10 @@
       "scenario": "junction",
       "status": "pass",
       "weight": 1,
-      "expected": "resolved path points at real target (/tmp/gepa-harness-tDAKYx/real/target)",
-      "actual": "resolved=\"/tmp/gepa-harness-tDAKYx/real/target\"",
+      "expected": "resolved path points at real target (/tmp/gepa-harness-zmqzOw/real/target)",
+      "actual": "resolved=\"/tmp/gepa-harness-zmqzOw/real/target\"",
       "captured_output": [
-        "behavior.jctResolve -> {\"resolvedPath\":\"/tmp/gepa-harness-tDAKYx/real/target\",\"message\":\"resolved junction\"}"
+        "behavior.jctResolve -> {\"resolvedPath\":\"/tmp/gepa-harness-zmqzOw/real/target\",\"message\":\"resolved junction\"}"
       ],
       "duration_ms": 0
     },
@@ -107,9 +107,9 @@
       "status": "pass",
       "weight": 1,
       "expected": "traversal through a junction cycle terminates (no infinite loop)",
-      "actual": "terminated=true visited=1",
+      "actual": "terminated=true visited=2",
       "captured_output": [
-        "behavior.jctTraverse -> {\"terminated\":true,\"visited\":1,\"message\":\"traversed 1 nodes\"}"
+        "behavior.jctTraverse -> {\"terminated\":true,\"visited\":2,\"message\":\"traversed 2 nodes (visited-set bounded)\"}"
       ],
       "duration_ms": 0
     },

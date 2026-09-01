@@ -75,27 +75,33 @@ const REFERENCE = {
   },
 
   jctTraverse(sandbox) {
-    // Bounded DFS that resolves junctions and tracks visited real paths.
+    // Bounded DFS over the simulated junction graph: resolve each link
+    // to its real target, enumerate links nested under the resolved
+    // path, and track visited real paths so a junction cycle
+    // (a/loop -> b, b/loop -> a) terminates. A naive skill that lacks
+    // the visited set would loop forever here.
     const visited = new Set();
     let count = 0;
     const maxSteps = 1000;
+    const links = sandbox.junctionLinks(); // absolute link paths
+    const relOf = (abs) => abs.slice(sandbox.root.length + 1);
     const walk = (rel) => {
-      if (count > maxSteps) return false; // runaway guard
-      const abs = sandbox.path(rel);
-      const key = sandbox.junctionTarget(rel) ?? abs;
-      if (visited.has(key)) return true;
+      const target = sandbox.junctionTarget(rel);
+      const key = target ?? sandbox.path(rel);
+      if (visited.has(key)) return true; // cycle guard — terminates
       visited.add(key);
       count += 1;
-      // If this entry is a junction link, follow it once, then descend.
-      const realRel = sandbox.junctionTarget(rel);
-      if (realRel) {
-        // resolve: continue at the real path
-        return walk(realRel === sandbox.path(rel) ? '' : realRel);
+      if (count > maxSteps) return false; // runaway guard (unreachable with visited set)
+      const base = target ?? sandbox.path(rel);
+      for (const childAbs of links) {
+        if (childAbs.startsWith(base) && childAbs !== base) {
+          if (!walk(relOf(childAbs))) return false;
+        }
       }
       return true;
     };
     const terminated = walk('a');
-    return { terminated, visited: count, message: `traversed ${count} nodes` };
+    return { terminated, visited: count, message: `traversed ${count} nodes (visited-set bounded)` };
   },
 
   jctCleanup(sandbox) {
