@@ -148,6 +148,9 @@ Manifest đầy đủ và replayable (candidate text persist). Cần wire `schem
 ### O2 — [Nhỏ] `dspy==0.1.0` — xác nhận version được publish
 - `requirements.txt` pin `dspy==0.1.0`; `checkDepsPinned` pass vì có `==`. dspy hiện tại (Stanford DSPy) là 2.x; nếu `0.1.0` không tồn tại trên PyPI thì CI lockfile (`pip install --require-hashes`) sẽ fail. Runtime stdlib-only nên không ảnh hưởng vận hành; đề xuất pin version thật hoặc ghi rõ placeholder + verify trong CI build.
 
+### O3 — [Nhỏ] `__pycache__/*.pyc` đang được commit vào repo
+- `git ls-files | grep '\.pyc$'` → **11 file** `evolution/sidecar/gepa_sidecar/__pycache__/*.pyc` + `tests/__pycache__/*.pyc` được commit (T12). File biên dịch không nên nằm trong repo; đề xuất thêm vào `.gitignore` và xoá khỏi index trong follow-up (không ảnh hưởng chức năng — chỉ hygiene).
+
 ---
 
 ## 6. Verdict
