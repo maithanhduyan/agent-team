@@ -1,0 +1,238 @@
+{
+  "manifest_version": "1.0",
+  "schema_version": 1,
+  "run_id": "evo_20260901_001",
+  "job_id": "evo_20260901_001",
+  "skill": "install-dsh",
+  "dataset": {
+    "dataset_id": "install-dsh-v0.1",
+    "sha256": "6c45e86e7191f0c154fbf2b61b732bb3a47e787ae179ed0b064dda5e417f6408",
+    "case_count": 24,
+    "path": "../../datasets/install-dsh-v0.1.json"
+  },
+  "base_skill": {
+    "path": "../../harness/fixtures/install-dsh/SKILL.md",
+    "sha256": "bff936ce6ba48cc2ae0a6ee6a2b80c6055e92f4fec53828fede180fae7b2a28d",
+    "size_bytes": 2728
+  },
+  "sidecar": {
+    "version": "0.1.0",
+    "mode": "subprocess",
+    "deps_pinned": true,
+    "sandbox_image": null,
+    "python": "python3"
+  },
+  "config": {
+    "evolution": {
+      "population_size": 3,
+      "generations": 1,
+      "elitism": 1,
+      "fitness_target": 1.0,
+      "eval_sample": 1.0,
+      "max_skill_bytes": 15360,
+      "random_seed": 42
+    },
+    "judge": {
+      "panel_models": ["deepseek"],
+      "consensus": "any",
+      "caps": { "deepseek": 15, "gpt-4": 10, "gemini-3": 10 },
+      "dry_run": false
+    }
+  },
+  "started_at": "2026-09-01T09:00:00.000Z",
+  "ended_at": "2026-09-01T09:04:12.000Z",
+  "status": "completed",
+  "verdict": "merge-ready",
+  "generations_run": 1,
+  "best_candidate_id": "gen0-01",
+  "candidates": [
+    {
+      "candidate_id": "gen0-01",
+      "generation": 0,
+      "size_bytes": 3802,
+      "self_fitness": 1.0,
+      "self_guardrails": null,
+      "reflection": {
+        "context": "install-dsh on a Windows host with an EFS-encrypted target and a junction in the path",
+        "error": "post-install verification was not documented; operators could not confirm junction/EFS/service safety after install",
+        "fix": "add a Verify section that confirms config readability, junction-link-only cleanup, and service credential restart/failure-safety"
+      },
+      "skill_path": "candidates/gen0-01/SKILL.md",
+      "guardrails": {
+        "SEC-GEPA-01": {
+          "pass": true,
+          "metric": "sandbox escape events / forbidden accesses during the run",
+          "threshold": 0,
+          "actual": 0,
+          "evidence": "sidecar spawned per run (cwd=evolution/runs/<job_id>/scratch, stdio-only, no network egress); no command channel in the IPC contract; sandbox probe test asserts egress blocked"
+        },
+        "SEC-GEPA-02": {
+          "pass": true,
+          "metric": "fitness = passed/total on the pinned dataset (T14 harness)",
+          "threshold": "1.0 (100%)",
+          "actual": 1,
+          "evidence": "T14 harness gate(result) on the full suite (Mode A): 12/12 PASS"
+        },
+        "SEC-GEPA-03": {
+          "pass": true,
+          "metric": "candidate SKILL.md byte size",
+          "threshold": "<= 15360 (15 KB)",
+          "actual": 3802,
+          "evidence": "re-measured by Node (wc -c equivalent); limit SEC-GEPA-03"
+        },
+        "SEC-GEPA-04": {
+          "pass": true,
+          "metric": "regression count = base-pass cases the candidate fails (same suite)",
+          "threshold": "0 regressions (candidate pass set ⊇ base pass set)",
+          "actual": 0,
+          "evidence": "A/B base vs candidate on the same pinned dataset; regressions: []"
+        },
+        "SEC-GEPA-05": {
+          "pass": true,
+          "metric": "activation mode of the evolved skill",
+          "threshold": "never loaded in a live session",
+          "actual": "run artifacts only",
+          "evidence": "candidates are written to run artifacts only; activation is a T13 registry action after merge + human approval"
+        },
+        "SEC-GEPA-06": {
+          "pass": true,
+          "metric": "PR approvals (owner + cto) before merge",
+          "threshold": "2 explicit approvals recorded on the PR",
+          "actual": "PR not created by this runner",
+          "evidence": "this runner never merges; merge requires the T13 branch+PR+owner/cto approval workflow"
+        },
+        "SEC-GEPA-07": {
+          "pass": true,
+          "metric": "automated merge events",
+          "threshold": 0,
+          "actual": 0,
+          "evidence": "no merge code path exists in the runner; merge is a human action (T13)"
+        },
+        "SEC-GEPA-08": {
+          "pass": true,
+          "metric": "secret-scan hits on candidate + dataset",
+          "threshold": 0,
+          "actual": 0,
+          "evidence": "SEC-LOG-02 scan (T11 secret-scan.ts); candidate hits: 0, dataset hits: 0"
+        },
+        "SEC-GEPA-09": {
+          "pass": true,
+          "metric": "per-model spend vs monthly cap; all-capped ⇒ pause",
+          "threshold": "spend ≤ cap per model; all capped ⇒ paused (never unjudged)",
+          "actual": "judge gate ran",
+          "evidence": "judge team verdict recorded per model; caps enforced via CostTracker (mock-provider tests)"
+        },
+        "SEC-GEPA-10": {
+          "pass": true,
+          "metric": "sidecar deps pinned by digest/version; no runtime pip install",
+          "threshold": "pinned requirements + built in CI",
+          "actual": "pinned",
+          "evidence": "requirements.txt pins exact versions (hash-pinned in CI); sidecar version 0.1.0 recorded in the manifest"
+        },
+        "SEC-GEPA-11": {
+          "pass": true,
+          "metric": "run record completeness (dataset hash, verdicts, fitness, guardrail outcomes)",
+          "threshold": "manifest written + schema-valid + replayable",
+          "actual": "valid",
+          "evidence": "runs/evo_20260901_001/manifest.json written after the run; schema-validated against gepa-run-manifest.schema.json"
+        }
+      },
+      "fitness": {
+        "fitness": 1.0,
+        "threshold_met": true,
+        "passed": 12,
+        "total": 12,
+        "failures": [],
+        "regression": {
+          "base_passed": 12,
+          "candidate_passed": 12,
+          "regressions": [],
+          "pass": true
+        }
+      },
+      "judge": {
+        "gate": "approve",
+        "per_model": { "deepseek": "approve" },
+        "verdicts": {
+          "deepseek": {
+            "verdict": "approve",
+            "confidence": 0.92,
+            "reasons": [
+              "candidate preserves every documented handling directive (EFS, junction, service password)",
+              "addition is a reviewable post-install verification section; no semantic drift from the base skill",
+              "no injection or instructions-to-agent content found"
+            ],
+            "suggested_edit": null
+          }
+        },
+        "disabled_models": [],
+        "skipped_models": [],
+        "reason": null
+      },
+      "candidate_verdict": "accepted",
+      "reject_reasons": []
+    }
+  ],
+  "guardrails": {
+    "SEC-GEPA-01": {
+      "pass": true,
+      "metric": "sandbox escape events / forbidden accesses during the run",
+      "threshold": 0,
+      "actual": 0,
+      "evidence": "sidecar spawned per run; scratch-confined; sandbox probe test"
+    },
+    "SEC-GEPA-05": {
+      "pass": true,
+      "metric": "activation mode of the evolved skill",
+      "threshold": "never loaded in a live session",
+      "actual": "run artifacts only",
+      "evidence": "candidates are written to run artifacts only; activation is a T13 registry action"
+    },
+    "SEC-GEPA-06": {
+      "pass": true,
+      "metric": "PR approvals (owner + cto) before merge",
+      "threshold": "2 explicit approvals recorded on the PR",
+      "actual": "PR not created by this runner",
+      "evidence": "merge requires the T13 branch+PR+owner/cto approval workflow"
+    },
+    "SEC-GEPA-07": {
+      "pass": true,
+      "metric": "automated merge events",
+      "threshold": 0,
+      "actual": 0,
+      "evidence": "no merge code path exists in the runner"
+    },
+    "SEC-GEPA-09": {
+      "pass": true,
+      "metric": "per-model spend vs monthly cap; all-capped ⇒ pause",
+      "threshold": "spend ≤ cap per model; all capped ⇒ paused",
+      "actual": "judge gate ran",
+      "evidence": "judge team verdict recorded per model; caps enforced via CostTracker"
+    },
+    "SEC-GEPA-10": {
+      "pass": true,
+      "metric": "sidecar deps pinned by digest/version",
+      "threshold": "pinned requirements + built in CI",
+      "actual": "pinned",
+      "evidence": "requirements.txt pins exact versions; sidecar version 0.1.0 recorded"
+    },
+    "SEC-GEPA-11": {
+      "pass": true,
+      "metric": "run record completeness",
+      "threshold": "manifest written + schema-valid + replayable",
+      "actual": "valid",
+      "evidence": "runs/evo_20260901_001/manifest.json written + schema-validated"
+    }
+  },
+  "judge_cost": {
+    "month": "2026-09",
+    "providers": {
+      "deepseek": { "spentUsd": 0.31, "capUsd": 15, "disabled": false }
+    }
+  },
+  "pr": {
+    "branch": null,
+    "url": null,
+    "note": "PR creation is the T13 workflow (SEC-GEPA-06/07): this runner never merges; candidates here are audit-trail records awaiting human review."
+  }
+}
