@@ -358,7 +358,13 @@ PR). Requirements view:
   doc) ⇒ **rejected — no merge**.
 - **Downstream:** T11 eval dataset builder → T12 GEPA runner + fitness
   gate → T13 evolved-skill PR workflow → T14 Windows Sandbox harness →
-  T15 review → T19 release gate (đợt 2 — created only after T09/T10 are
-  approved).
+  T15 review → T19 release gate. **Trạng thái (2026-09, ADR-020/024):**
+  T09–T14 merged — T11 (PR #32), T14 (PR #31), T12 (PR #34,
+  `99194d2`), T13 (PR #35, `c8ffb74`) đều trên `develop`; **T15**
+  (reviewer, Redmine #53, TASK-9692) đang chạy — review code pipeline
+  GEPA (semantic preservation, size ≤15 KB, regression check); chưa có
+  skill evolved nên chưa review skill PR (vòng pipeline thật sau T17).
+  T16–T21 deferred chờ T15 xong.
 - **Decisions:** `DECISIONS.md` ADR-009/010 (existing) + ADR-015 (this
-  PR).
+  PR) + ADR-020/021/022 (T11/T12/T13) + ADR-023 (Q5) + ADR-024 (SÓNG 2b
+  closure).
