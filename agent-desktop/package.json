@@ -3,7 +3,7 @@
   "version": "0.4.0",
   "private": true,
   "type": "module",
-  "description": "agent-desktop memory foundation — core memory module (T03): append-only L2 writer (sessions.jsonl), L3 writer (core.md), provenance + anti-poisoning guardrails, SEC-MEM-01 render wrapper; retrieval tools (T04): search_memory (α·sim+β·recency+γ·importance), grep_logs (RE2-safe), hot-fact injection, SEC-MEM-02 trust guidance, agentic query budget; consolidation job (T05): sleep-time pipeline (reflect → graduation → multi-model judge gate → verifier → write), conflict supersede, Day-30 decay, per-model cost caps (spec §8–§10, Q5); Telegram bridge (T08): consolidation notifications + spend report (SEC-COST-02), /memory chat commands (search/grep/hot/spend), sandbox-first transport (no network), SEC-MEM-01/SEC-KEY/SEC-LOG compliant",
+  "description": "agent-desktop memory foundation \u2014 core memory module (T03): append-only L2 writer (sessions.jsonl), L3 writer (core.md), provenance + anti-poisoning guardrails, SEC-MEM-01 render wrapper; retrieval tools (T04): search_memory (\u03b1\u00b7sim+\u03b2\u00b7recency+\u03b3\u00b7importance), grep_logs (RE2-safe), hot-fact injection, SEC-MEM-02 trust guidance, agentic query budget; consolidation job (T05): sleep-time pipeline (reflect \u2192 graduation \u2192 multi-model judge gate \u2192 verifier \u2192 write), conflict supersede, Day-30 decay, per-model cost caps (spec \u00a78\u2013\u00a710, Q5); Telegram bridge (T08): consolidation notifications + spend report (SEC-COST-02), /memory chat commands (search/grep/hot/spend), sandbox-first transport (no network), SEC-MEM-01/SEC-KEY/SEC-LOG compliant",
   "engines": {
     "node": ">=20"
   },
@@ -21,7 +21,11 @@
     "typecheck:evolution": "tsc --noEmit -p evolution/tsconfig.json",
     "test:evolution": "node --import tsx --test evolution/test/*.test.ts",
     "eval:dataset": "node --import tsx evolution/src/build-eval-dataset.ts",
-    "eval:scan": "node --import tsx evolution/src/secret-scan.ts"
+    "eval:scan": "node --import tsx evolution/src/secret-scan.ts",
+    "evolve:run": "node --import tsx evolution/runner/src/cli.ts",
+    "evolve:run:built": "node dist/evolution/runner/src/cli.js",
+    "test:runner": "node --import tsx --test evolution/runner/test/*.test.ts",
+    "test:sidecar": "python3 -m unittest discover -s evolution/sidecar/tests -q"
   },
   "devDependencies": {
     "@types/node": "^24.10.0",

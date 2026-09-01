@@ -17,6 +17,12 @@ schema-valid, coverage-complete, deduplicated, and free of secrets — the
 builder enforces all of this **at build time** and refuses to produce an
 invalid dataset.
 
+> **T12 addendum (this task):** the **evolution runner + fitness gate**
+> lives in `runner/` (Node/TS trust anchor) and `sidecar/` (Python GEPA
+> core) — see `runner/README.md` and `sidecar/README.md`. The runner
+> consumes this dataset (pinned `sha256`, COV-3) and the T14 harness
+> (`harness/` — `gate(result)`) per `docs/gepa-pipeline.md` §5.
+
 ## 1. Layout
 
 ```text

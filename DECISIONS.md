@@ -16,13 +16,13 @@ the project architecture, or the product scope changes.
 > Redmine #36) adds ADR-015…ADR-017; the T10 skill-evolution acceptance
 > PR (TASK-7214 / Redmine #37) adds ADR-018 (renumbered on merge by pm —
 > ba's working number 015 collided with cto's ADR-015). The T11 eval
-> dataset builder PR (TASK-8866 / Redmine #44) adds ADR-020. On merge, keep
+> dataset builder PR (TASK-8866 / Redmine #44) adds ADR-020. The T12
+> evolution runner PR (TASK-9053 / Redmine #47) adds ADR-021. On merge, keep
 > all sets; the
 > second PR to merge reconciles the file (trivial append). Per the cto
 > ADR-ownership rule (see the TASK-179 version of this file), the cto
 > assigns final numbers on merge; working numbers on branches never
 > collide because each PR appends its own range.
-
 ## ADR-020 — Eval dataset builder (T11): source contracts, layout, immutability (Redmine #44)
 
 - **Status:** proposed (TASK-8866 / Redmine #44; T11 — eval dataset
@@ -90,6 +90,60 @@ the project architecture, or the product scope changes.
   the hash); T14 scores against the same schema + manifest classes; T15/
   T19 replay from the report's hash. Implemented + tested in
   `agent-desktop/evolution/` (27 tests: SRC/FMT/COV/QL + CLI).
+
+## ADR-021 — GEPA evolution runner + fitness gate (T12): sidecar IPC, deterministic behavior proxy, gate-not-fitness (Redmine #47)
+
+- **Status:** proposed (TASK-9053 / Redmine #47; T12 — evolution runner
+  + fitness gate; contract T09 §3–§9 / ADR-015/016/017, T10 §5/§7,
+  SEC-GEPA-01…11)
+- **Date:** 2026-09
+- **Context:** T12 must run one evolution run end-to-end (dataset →
+  sidecar evolve → guardrails → fitness gate → judge → audit manifest)
+  while keeping the ADR-009 trust boundary and the T09/T10 acceptance
+  numbers (fitness 1.0, size 15 KB, per-model cost caps).
+- **Decision (backend scope):**
+  - **Sidecar = per-run subprocess, JSON-RPC 2.0 over stdio**
+    (`evolution/sidecar/`, stdlib-only Python; `evolution/runner/src/
+    sidecar-client.ts`). Data whitelist per ADR-009 §6.1: dataset JSON
+    text + its `sha256`, base skill text + `sha256`, env-less config,
+    job id, scratch dir. The sidecar verifies the hashes in
+    `initialize` (COV-3 immutability) and never holds an API key: a
+    real LM call goes through an optional Node-controlled proxy
+    (`lm_proxy_url` + short-lived token); the deterministic `MockLM`
+    runs the same loop offline (SEC-KEY-03 — skip, never fail).
+  - **Fitness gate consumes the T14 harness contract exactly (PR #31):**
+    `harness/lib/fitness.mjs` `gate(result)` on the full suite + A/B
+    regression vs the base skill on the SAME dataset (SEC-GEPA-04).
+    Candidate SKILL.md → harness behavior via **deterministic
+    extraction** (`behavior.ts`, CG-1): a candidate that documents the
+    correct handling for a failure class gets the correct behavior;
+    one that dropped it gets the naive (failing) behavior — so the gate
+    measures exactly what the skill text says to do (Mode A proxy;
+    Mode B owner-uploaded results use the identical schema).
+  - **Gate, not fitness (hermes lesson):** candidates are REJECTED on
+    any gate failure (suite < 100%, size > 15 KB, any regression,
+    secret-scan hit, judge reject). The runner never merges
+    (SEC-GEPA-06/07) — it records a `merge-ready` verdict + the audit
+    manifest; the PR + owner/cto approval is T13.
+  - **Judge team (Q5/ADR-017):** reuses the T05 provider abstraction +
+    `CostTracker`; per-model caps (`JUDGE_CAP_*_USD`, defaults
+    15/10/10); capped model auto-disables; **all capped ⇒ the run
+    pauses safely** (no unjudged write, no cap override). A
+    `EVOLUTION_JUDGE_DRY_RUN` flag lets tests/CI exercise the pipeline
+    without keys (verdicts recorded, never blocking).
+  - **Audit trail (SEC-GEPA-11):** `evolution/runs/<job_id>/
+    manifest.json` (0600, gitignored) — dataset sha256, sidecar
+    version, config, per-candidate guardrail outcomes + fitness +
+    judge verdicts + final verdict + PR link; schema-validated against
+    `contracts/gepa-run-manifest.schema.json` and replayable.
+  - **Cost-tracker concurrency fix:** `src/costs.ts` `load()` is now
+    concurrency-safe (in-flight load shared) — the T12 judge calls
+    `recordCost` for panel models in parallel (SEC-GEPA-09).
+- **Consequences:** T13 builds the branch→PR→human-review workflow on
+  the `merge-ready` verdict + manifest; T15/T19 replay from the
+  manifest. Implemented + tested in `agent-desktop/evolution/runner/`
+  (46 Node/TS tests) + `evolution/sidecar/` (27 Python tests); T06
+  suite stays 40/40.
 
 ## ADR-019 — T04 hot-fact injection applies the Day-30 decay projection read-time (Redmine #39)
 

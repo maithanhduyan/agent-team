@@ -5,5 +5,9 @@
     "noEmit": true,
     "declaration": false
   },
-  "include": ["src", "evolution/src"]
+  "include": [
+    "src",
+    "evolution/src",
+    "runner/src"
+  ]
 }
