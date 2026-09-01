@@ -18,12 +18,49 @@ the project architecture, or the product scope changes.
 > ba's working number 015 collided with cto's ADR-015). The T11 eval
 > dataset builder PR (TASK-8866 / Redmine #44) adds ADR-020. The T12
 > evolution runner PR (TASK-9053 / Redmine #47) adds ADR-021. The T13
-> candidate-PR workflow PR (TASK-9054 / Redmine #48) adds ADR-022. On merge, keep
+> candidate-PR workflow PR (TASK-9054 / Redmine #48) adds ADR-022. The
+> Q5-enablement branch (pm TASK-9633 / Redmine #50) adds ADR-023. The
+> wave-2b closure branch (pm TASK-9638 / Redmine #51) adds ADR-024. On merge, keep
 > all sets; the
 > second PR to merge reconciles the file (trivial append). Per the cto
 > ADR-ownership rule (see the TASK-179 version of this file), the cto
 > assigns final numbers on merge; working numbers on branches never
 > collide because each PR appends its own range.
+
+## ADR-024 — SÓNG 2b closure: T12 (PR #34) + T13 (PR #35) merged, T15 review created (Redmine #51)
+
+- **Status:** accepted (pm coordination — TASK-9638 / Redmine #51;
+  completes the unfinished deliverable of TASK-9615 / Redmine #49)
+- **Date:** 2026-09
+- **Context:** run 66 (TASK-9615 / #49) exited 0 but closed the issue
+  with the wave-2b merge unfinished: PR #34 (T12) and PR #35 (T13)
+  were still open, and T15 was not created. This run completed the
+  remaining work: verified both PRs (typecheck+build clean; runner
+  46/46, sidecar 27/27, workflow 48/48, full suite 209/209; secret
+  scan 0 hits on the dataset; no real credentials in the diffs),
+  merged PR #34 then PR #35 into `develop` in order, and created
+  T15 (reviewer, Redmine #53).
+- **Decision:**
+  - Merge order enforced per ADR-020 wave rule: **PR #34 (T12) first**,
+    then **PR #35 (T13)** (T13 stacks on T12). Both via GitHub merge
+    (non-squash, merge commits preserved): `99194d2` (PR #34),
+    `c8ffb74` (PR #35) on `develop`.
+  - **T15 [reviewer]** created as Redmine **#53** (project
+    agent-desktop, version v0.5 Skill Evolution, assigned reviewer)
+    — reviews the merged GEPA code pipeline against
+    `docs/skill-evolution-acceptance.md` (T10): semantic preservation
+    (SEC-GEPA-04), size ≤ 15 KB (SEC-GEPA-03), regression check
+    (gate-not-fitness, SEC-GEPA-02), PR/human-review workflow
+    (SEC-GEPA-05/06/07), audit trail (SEC-GEPA-11). **No evolved-skill
+    PR exists yet** — review is code-pipeline only; evolved-skill PR
+    review lands in the real pipeline round (after T17).
+  - **No T16–T21** created (deferred per #49/#51 scope).
+- **Consequences:** T15 (TASK-9692) runs on the reviewer agent; after
+  its verdict, the next coordination round decides T16–T21 scope and
+  the real pipeline usage round. PR #36 (Q5 enablement, ADR-023) and
+  the backend Q5 implementation (Redmine #52) proceed independently on
+  top of the merged T12/T13 code.
+
 ## ADR-022 — GEPA candidate-PR workflow (T13): branch + PR + human review, no auto-merge, no hot-swap (Redmine #48)
 
 - **Status:** proposed (TASK-9054 / Redmine #48; T13 — workflow skill
