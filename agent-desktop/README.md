@@ -445,6 +445,23 @@ adds `consolidation-cursor.json` (cursor) and `costs-YYYYMM.json`
 node tests/run-suite.mjs   # from this directory
 ```
 
+## GEPA eval harness (T14, v0.5)
+
+The install-dsh eval suite packaged as a **fitness gate** for the GEPA
+skill-evolution pipeline (T09 §5, ADR-016): happy path + planted
+failures (EFS, junction, service-password), scenario-class manifest,
+unified result JSON schema, shared fitness function, and two run modes
+(T09 §5.4 Q3):
+
+- **Mode A — offline/CI** (`evolution/harness/mode-a/run-mode-a.mjs`):
+  deterministic in the Linux sandbox; reference behavior 12/12 +
+  planted-failure detection matrix.
+- **Mode B — owner-run Windows Sandbox** (`evolution/harness/mode-b/`):
+  PowerShell harness + owner instructions + result form; owner uploads
+  the result JSON (same schema) as merge evidence (T17).
+
+See [`evolution/harness/README.md`](evolution/harness/README.md).
+
 > Status note (PM, TASK-7174): T06 fixtures were authored before the
 > backend PRs (#14–#17) merged; the implementation suites were skip-aware
 > because the probe paths predated the TS implementation. With T03/T04/T05

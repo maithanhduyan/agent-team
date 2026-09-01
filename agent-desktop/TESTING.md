@@ -5,6 +5,53 @@
 > Spec: `docs/memory-spec.md` §13 (acceptance mapping) · Security: `docs/security-review-memory.md` SEC-MEM-01/02
 > Branch: `tester/TASK-7439-redmine-41-bug-t06-suite-fix` · Base: `develop`
 
+## 00. Addendum — T14 GEPA eval harness (TASK-8867 / Redmine #45): Mode A 12/12 + planted-failure detection
+
+> Author: tester (tester@agent-team.local) · Date: 2026-09 · Branch:
+> `tester/TASK-8867-redmine-45-t14-harness-windo` · Base: `develop`
+> Design: `docs/gepa-pipeline.md` §5 (T09) · Acceptance: `docs/skill-evolution-acceptance.md` §4.3/§5 (T10)
+> Security: `docs/security-review-memory.md` §5 (SEC-GEPA-01…11)
+
+**What this adds:** the install-dsh eval suite packaged as a GEPA
+fitness gate — `agent-desktop/evolution/harness/` (see
+[`evolution/harness/README.md`](evolution/harness/README.md)). It does
+**not** modify the T06 memory suite (still 40/40, verified below).
+
+**Mode A (offline/CI) — reference run:** all **12/12 cases pass**,
+fitness = **1.0**, gate PASS (SEC-GEPA-02):
+
+| Scenario class | Cases | Reference result |
+|---|---|---|
+| happy-path | hp-install, hp-idempotency, hp-cleanup | ✅ 3/3 |
+| efs | efs-detect-target, efs-copy-source, efs-cleanup-encrypted | ✅ 3/3 |
+| junction | jct-resolve, jct-traverse, jct-cleanup | ✅ 3/3 |
+| service-password | svc-update-credential, svc-restart, svc-failure-safe | ✅ 3/3 |
+
+**Planted-failure detection matrix** (`node mode-a/run-mode-a.mjs --verify-planted`):
+each mutant fails **exactly** its scenario class (suite validity proof):
+
+| Mutant | Expected failures | Actual failures | Detected |
+|---|---|---|---|
+| efs-ignore | efs-detect-target, efs-copy-source, efs-cleanup-encrypted | same | ✅ |
+| junction-naive | jct-resolve, jct-traverse, jct-cleanup | same | ✅ |
+| svc-no-restart | svc-restart, svc-failure-safe | same | ✅ |
+
+**Harness selfcheck** (`node --test evolution/harness/tests/harness-selfcheck.test.mjs`): **9/9 pass**
+(manifest schema + COV-1 coverage, result schema, fitness math ADR-016,
+gate threshold, reference 12/12, planted detection, determinism).
+
+**Mode B (owner-run Windows Sandbox):** kit in
+`evolution/harness/mode-b/` — `run-mode-b.ps1` (same 12 cases, real
+Windows junctions/EFS/file ops, identical result JSON schema),
+`owner-instructions.md` (no-code steps), `result-form.md` (fill +
+upload). Mode B is the owner's final evidence before merge (T17) and
+feeds the T11 dataset builder; the fitness function is shared with
+Mode A so owner-uploaded JSON plugs straight into the T12 gate.
+
+**Traceability:** manifest `evolution/harness/manifest.json` v1.0.0
+declares the 4 scenario classes + 12 cases; T11 uses it as the coverage
+standard (COV-1: class without cases ⇒ dataset invalid).
+
 ## 0. Addendum — Redmine #42 backend fix (TASK-7805): suite now 40/40
 
 > Author: backend (backend@agent-team.local) · Date: 2026-09 · Branch:
