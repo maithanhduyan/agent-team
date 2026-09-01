@@ -1,0 +1,28 @@
+{
+  "harness_version": "0.1.0",
+  "run_id": "mode-a-2026-09-01-001",
+  "mode": "A",
+  "results": [
+    { "case_id": "ID-INSTALL-DSH-001", "passed": true, "captured_output": "install-dsh: installed dsh to C:\\Users\\owner\\.dsh\\bin (fresh install OK)" },
+    { "case_id": "ID-INSTALL-DSH-002", "passed": true, "captured_output": "install-dsh: already installed — skipping copy (idempotent)" },
+    { "case_id": "ID-INSTALL-DSH-003", "passed": true, "captured_output": "install-dsh: uninstall OK; reinstall OK" },
+    { "case_id": "ID-INSTALL-DSH-004", "passed": true, "captured_output": "install-dsh: default profile path C:\\Users\\owner\\.dsh used" },
+    { "case_id": "ID-INSTALL-DSH-005", "passed": true, "captured_output": "dsh.exe smoke: started, exit 0" },
+    { "case_id": "ID-INSTALL-DSH-006", "passed": true, "captured_output": "PATH entry present; dsh --version -> dsh 0.5.0" },
+    { "case_id": "ID-INSTALL-DSH-007", "passed": false, "captured_output": "copy stage: CopyFileEx(C:\\sandbox\\stage\\dsh.exe, C:\\Users\\owner\\.dsh\\bin\\dsh.exe) failed", "error": "CopyFileEx failed for C:\\Users\\owner\\.dsh\\bin\\dsh.exe: EFS error 1314 (missing privilege)" },
+    { "case_id": "ID-INSTALL-DSH-008", "passed": true, "captured_output": "copy stage: raw file copy with decryption on EFS dir OK (plaintext on disk)" },
+    { "case_id": "ID-INSTALL-DSH-009", "passed": false, "captured_output": "verify stage: read-back of C:\\Users\\owner\\.dsh\\bin\\dsh.exe returned encrypted bytes", "error": "verify stage: read-back of C:\\Users\\owner\\.dsh\\bin\\dsh.exe returned encrypted bytes" },
+    { "case_id": "ID-INSTALL-DSH-010", "passed": true, "captured_output": "verify stage: EFS decryption handle read returned plaintext (PE header intact)" },
+    { "case_id": "ID-INSTALL-DSH-011", "passed": true, "captured_output": "probe: C:\\Users\\owner is EFS-encrypted — switching copy strategy" },
+    { "case_id": "ID-INSTALL-DSH-012", "passed": false, "captured_output": "copy stage: junction C:\\Users\\owner\\AppData\\Roaming\\dsh -> C:\\tools\\dsh followed; files landed on C:\\tools\\dsh", "error": "copy stage: junction C:\\Users\\owner\\AppData\\Roaming\\dsh -> C:\\tools\\dsh followed; files landed on wrong target" },
+    { "case_id": "ID-INSTALL-DSH-013", "passed": true, "captured_output": "copy stage: junction resolved before install root chosen; files landed on resolved target C:\\tools\\dsh" },
+    { "case_id": "ID-INSTALL-DSH-014", "passed": false, "captured_output": "copy stage: junction loop A -> B -> A detected after 10000 hops", "error": "copy stage: junction loop A -> B -> A caused infinite recursion" },
+    { "case_id": "ID-INSTALL-DSH-015", "passed": true, "captured_output": "copy stage: loop-safe traversal with visited set — copied 128 files, no loop" },
+    { "case_id": "ID-INSTALL-DSH-016", "passed": true, "captured_output": "install under junctioned directory succeeded; files on resolved target" },
+    { "case_id": "ID-INSTALL-DSH-017", "passed": false, "captured_output": "service stage: sc.exe create failed", "error": "service stage: sc.exe create failed (error 1069): the service credential was rejected by CreateServiceW" },
+    { "case_id": "ID-INSTALL-DSH-018", "passed": true, "captured_output": "service stage: service started with escaped credential (exit 0)" },
+    { "case_id": "ID-INSTALL-DSH-019", "passed": false, "captured_output": "config stage: write of service config crashed on unescaped ampersand", "error": "config stage: service config write failed: unescaped '&' truncated the value" },
+    { "case_id": "ID-INSTALL-DSH-020", "passed": true, "captured_output": "config stage: sc.exe create with quoted args succeeded" },
+    { "case_id": "ID-INSTALL-DSH-021", "passed": true, "captured_output": "service stage: install + start idempotent (second run reports running)" }
+  ]
+}
