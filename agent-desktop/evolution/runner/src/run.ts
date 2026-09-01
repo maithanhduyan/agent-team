@@ -37,6 +37,7 @@ import { judgeCandidate, type JudgeTeamConfig } from './judge-team.js';
 import {
     buildManifest,
     writeManifest,
+    writeCandidateSkill,
     type ManifestCandidate,
     type RunManifest,
 } from './manifest.js';
@@ -238,6 +239,12 @@ export async function runEvolution(cfg: EvolutionConfig, opts: {
             else if (judgeOutcome.gate === 'error') rejectReasons.push('judge error — no unjudged write');
             else if (!judgeOk && judgeOutcome.gate === 'skipped' && deterministicPass) rejectReasons.push('judge skipped');
 
+            // T13 integration (AT-2, SEC-GEPA-11): persist the candidate
+            // text so the audit record is replayable and the T13 PR
+            // workflow can consume the candidate SKILL.md from the run
+            // directory (skill_path below).
+            const skillPath = writeCandidateSkill(cfg.runsDir, jobId, cand.candidate_id, cand.skill_text);
+
             manifests.push({
                 candidate_id: cand.candidate_id,
                 generation: cand.generation,
@@ -245,6 +252,7 @@ export async function runEvolution(cfg: EvolutionConfig, opts: {
                 self_fitness: cand.self_fitness,
                 self_guardrails: cand.self_guardrails,
                 reflection: cand.reflection,
+                skill_path: skillPath,
                 guardrails: Object.fromEntries(guardrails.map((g) => [g.id, g])),
                 fitness: {
                     fitness: fitness.fitness,

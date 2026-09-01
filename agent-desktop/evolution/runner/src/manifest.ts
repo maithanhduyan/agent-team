@@ -21,6 +21,8 @@ export interface ManifestCandidate {
     self_fitness: number | null;
     self_guardrails: Record<string, unknown> | null;
     reflection: { context: string; error: string; fix: string } | null;
+    /** Path of the persisted candidate SKILL.md (T13 integration, AT-2). */
+    skill_path: string | null;
     guardrails: Record<string, GuardrailResult>;
     fitness: {
         fitness: number;
@@ -115,6 +117,23 @@ export function writeManifest(manifest: RunManifest, runsDir: string): string {
     const file = join(runsDir, `${manifest.job_id}`, 'manifest.json');
     mkdirSync(dirname(file), { recursive: true, mode: 0o700 });
     writeFileSync(file, JSON.stringify(manifest, null, 2) + '\n', { encoding: 'utf8', mode: 0o600 });
+    return file;
+}
+
+/**
+ * Persist a candidate SKILL.md under `runs/<job_id>/candidates/<candidate_id>/`
+ * (0600 perms) — **T13 integration** (T10 §6.3 AT-2, SEC-GEPA-11).
+ *
+ * The run record is replayable only when it carries the candidate text:
+ * given `{dataset hash, harness version, candidate}` T15/T19 can re-derive
+ * fitness without the original environment. The T13 PR workflow consumes
+ * this file (`skill_path`) to build the candidate branch.
+ */
+export function writeCandidateSkill(runsDir: string, jobId: string, candidateId: string, skillText: string): string {
+    const dir = join(runsDir, jobId, 'candidates', candidateId);
+    mkdirSync(dir, { recursive: true, mode: 0o700 });
+    const file = join(dir, 'SKILL.md');
+    writeFileSync(file, skillText, { encoding: 'utf8', mode: 0o600 });
     return file;
 }
 
