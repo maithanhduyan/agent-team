@@ -45,3 +45,7 @@ data/observer.log
 # keep the directory README, never commit session/fact data)
 agent-desktop/memory/*
 !agent-desktop/memory/README.md
+
+# T14 harness — generated result JSON (commit only the golden reference)
+agent-desktop/evolution/harness/results/*
+!agent-desktop/evolution/harness/results/mode-a-reference.golden.json
