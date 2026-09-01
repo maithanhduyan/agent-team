@@ -45,3 +45,8 @@ data/observer.log
 # keep the directory README, never commit session/fact data)
 agent-desktop/memory/*
 !agent-desktop/memory/README.md
+
+# agent-desktop — GEPA evolution run manifests (SEC-GEPA-11 audit
+# records written by the T12 runner; keep the README, never commit
+# generated run manifests)
+agent-desktop/evolution/runs/*.json
