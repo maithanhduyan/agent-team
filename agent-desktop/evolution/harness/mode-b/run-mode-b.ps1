@@ -265,7 +265,8 @@ foreach ($c in $cases) {
   $status = 'error'
   $actual = ''
   try {
-    $ok = & $c.run
+    $out = @(& $c.run)             # capture ALL pipeline output
+    $ok = if ($out.Count -gt 0) { $out[-1] } else { $false }  # last value = boolean result
     $status = if ($ok) { 'pass' } else { 'fail' }
     $actual = "case result: $ok"
   } catch {
