@@ -1,0 +1,167 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://agent-team.local/evolution/contracts/gepa-run-manifest.schema.json",
+  "title": "GEPA evolution run manifest — SEC-GEPA-11 audit trail (T12)",
+  "description": "The run record written to `runs/<job_id>/manifest.json` after every evolution run (success or failure). Records dataset hash, sidecar version, config, per-generation candidates + guardrail outcomes + judge verdicts + fitness + final verdict, so T15 (reviewer) and T19 (release gate) can replay the run (T10 §6.3 AT-1/AT-2, SEC-GEPA-11).",
+  "type": "object",
+  "required": [
+    "manifest_version", "schema_version", "run_id", "job_id", "skill",
+    "dataset", "base_skill", "sidecar", "config", "started_at", "ended_at",
+    "status", "verdict", "generations_run", "candidates", "guardrails",
+    "judge_cost", "pr"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "manifest_version": { "const": "1.0" },
+    "schema_version": { "const": 1 },
+    "run_id": { "type": "string", "minLength": 1 },
+    "job_id": { "type": "string", "minLength": 1 },
+    "skill": { "type": "string", "minLength": 1 },
+    "dataset": {
+      "type": "object",
+      "required": ["dataset_id", "sha256", "case_count", "path"],
+      "properties": {
+        "dataset_id": { "type": "string" },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "case_count": { "type": "integer", "minimum": 0 },
+        "path": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "base_skill": {
+      "type": "object",
+      "required": ["path", "sha256", "size_bytes"],
+      "properties": {
+        "path": { "type": "string" },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "size_bytes": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "sidecar": {
+      "type": "object",
+      "required": ["version", "mode", "deps_pinned"],
+      "properties": {
+        "version": { "type": "string" },
+        "mode": { "enum": ["subprocess", "container"] },
+        "deps_pinned": { "type": "boolean" },
+        "sandbox_image": { "type": ["string", "null"] },
+        "python": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "config": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "started_at": { "type": "string", "format": "date-time" },
+    "ended_at": { "type": "string", "format": "date-time" },
+    "status": { "enum": ["completed", "failed", "paused"] },
+    "verdict": { "enum": ["merge-ready", "rejected", "paused", "no-candidate"] },
+    "generations_run": { "type": "integer", "minimum": 0 },
+    "best_candidate_id": { "type": ["string", "null"] },
+    "candidates": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/candidate_record" }
+    },
+    "guardrails": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/definitions/guardrail_record" }
+    },
+    "judge_cost": {
+      "type": "object",
+      "properties": {
+        "month": { "type": "string" },
+        "providers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["spentUsd", "capUsd", "disabled"],
+            "properties": {
+              "spentUsd": { "type": "number", "minimum": 0 },
+              "capUsd": { "type": "number", "minimum": 0 },
+              "disabled": { "type": "boolean" }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "pr": {
+      "type": "object",
+      "required": ["branch", "url", "note"],
+      "properties": {
+        "branch": { "type": ["string", "null"] },
+        "url": { "type": ["string", "null"] },
+        "note": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "error": { "type": ["object", "null"], "additionalProperties": true }
+  },
+  "definitions": {
+    "guardrail_record": {
+      "type": "object",
+      "required": ["pass", "metric", "threshold", "actual", "evidence"],
+      "properties": {
+        "pass": { "type": "boolean" },
+        "metric": { "type": "string" },
+        "threshold": { "type": ["string", "number", "boolean"] },
+        "actual": { "type": ["string", "number", "boolean", "null"] },
+        "evidence": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "candidate_record": {
+      "type": "object",
+      "required": [
+        "candidate_id", "generation", "size_bytes", "self_fitness",
+        "reflection", "guardrails", "fitness", "judge", "candidate_verdict"
+      ],
+      "properties": {
+        "candidate_id": { "type": "string" },
+        "generation": { "type": "integer", "minimum": 0 },
+        "size_bytes": { "type": "integer", "minimum": 1 },
+        "self_fitness": { "type": ["number", "null"] },
+        "self_guardrails": { "type": ["object", "null"], "additionalProperties": true },
+        "reflection": { "type": ["object", "null"], "additionalProperties": true },
+        "skill_path": { "type": ["string", "null"] },
+        "guardrails": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/definitions/guardrail_record" }
+        },
+        "fitness": {
+          "type": "object",
+          "required": ["fitness", "threshold_met", "passed", "total", "failures"],
+          "properties": {
+            "fitness": { "type": "number", "minimum": 0, "maximum": 1 },
+            "threshold_met": { "type": "boolean" },
+            "passed": { "type": "integer", "minimum": 0 },
+            "total": { "type": "integer", "minimum": 0 },
+            "failures": { "type": "array", "items": { "type": "object" } },
+            "regression": { "type": ["object", "null"], "additionalProperties": true }
+          },
+          "additionalProperties": false
+        },
+        "judge": {
+          "type": "object",
+          "required": ["gate", "per_model", "verdicts"],
+          "properties": {
+            "gate": { "enum": ["approve", "reject", "error", "paused", "skipped"] },
+            "per_model": { "type": "object", "additionalProperties": true },
+            "verdicts": { "type": "object", "additionalProperties": true },
+            "disabled_models": { "type": "array", "items": { "type": "string" } },
+            "skipped_models": { "type": "array", "items": { "type": "string" } },
+            "reason": { "type": ["string", "null"] },
+            "reasons": { "type": "array", "items": { "type": "string" } }
+          },
+          "additionalProperties": false
+        },
+        "candidate_verdict": { "enum": ["accepted", "rejected"] },
+        "reject_reasons": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    }
+  }
+}

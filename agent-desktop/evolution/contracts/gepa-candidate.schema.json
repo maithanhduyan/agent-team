@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://agent-team.local/evolution/contracts/gepa-candidate.schema.json",
+  "title": "GEPA candidate notification payload (T12, T09 §4.4)",
+  "description": "The `candidate` notification params emitted by the Python sidecar during `evolve`. Candidate = text + metadata only (ADR-009 §6.3.3 — the Node side re-validates; self-reported fitness/guardrails are informational for selection, never accepted without re-validation).",
+  "type": "object",
+  "required": ["candidate_id", "generation", "skill_text", "size_bytes", "self_fitness", "self_guardrails", "reflection"],
+  "additionalProperties": false,
+  "properties": {
+    "candidate_id": {
+      "type": "string",
+      "pattern": "^gen[0-9]+-[0-9]{2,}$"
+    },
+    "generation": { "type": "integer", "minimum": 1 },
+    "skill_text": { "type": "string", "minLength": 1 },
+    "size_bytes": { "type": "integer", "minimum": 1 },
+    "self_fitness": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+    "self_guardrails": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "reflection": {
+      "type": ["object", "null"],
+      "required": ["context", "error", "fix"],
+      "properties": {
+        "context": { "type": "string" },
+        "error": { "type": "string" },
+        "fix": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  }
+}
