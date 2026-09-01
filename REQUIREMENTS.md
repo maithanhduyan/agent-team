@@ -335,8 +335,8 @@ no unbounded drift).
 ## 7. v0.5 Skill Evolution (GEPA) — acceptance criteria (T10)
 
 > **Task:** TASK-7214 / Redmine #37 (T10 — acceptance criteria cho skill
-> evolution) · **Status:** proposed (T09 design #36 in progress) ·
-> **Version:** v0.5 Skill Evolution (due 2026-10-30)
+> evolution) · **Status:** approved (T09 #36 + T10 #37 merged, PR #19/#21 —
+> TASK-7174) · **Version:** v0.5 Skill Evolution (due 2026-10-30)
 
 The v0.5 milestone evolves `SKILL.md` skills (first: `install-dsh`)
 through a GEPA pipeline (plan #22 Q4/Q5): eval dataset → evolution →
@@ -358,7 +358,17 @@ PR). Requirements view:
   doc) ⇒ **rejected — no merge**.
 - **Downstream:** T11 eval dataset builder → T12 GEPA runner + fitness
   gate → T13 evolved-skill PR workflow → T14 Windows Sandbox harness →
-  T15 review → T19 release gate (đợt 2 — created only after T09/T10 are
-  approved).
+  T15 review → T19 release gate. Created **theo 2 sóng** (bài học chống
+  dispatch sớm, TASK-8837 / Redmine #43):
+  - **SÓNG 2a (đã tạo + dispatch 2026-09-01):** T11 (#44 / TASK-8866,
+    backend — eval dataset builder) · T14 (#45 / TASK-8867, tester —
+    harness Windows Sandbox). Điều kiện đạt: T09+T10 approved (PR
+    #19/#21 merged).
+  - **SÓNG 2b (CHƯA tạo — điều kiện: SAU khi T11 có PR, vòng điều phối
+    kế tiếp):** T12 (backend — GEPA runner + fitness gate, Python
+    sidecar DSPy+GEPA, Node/TS tích hợp ADR-009/010, cost cap, judge
+    đa model Q5 fallback DeepSeek) · T13 (backend — skill evolved →
+    branch → PR → human review, cấm auto-merge) · T15 (reviewer — review
+    pipeline + skill PRs, chỉ sau khi T12/T13 có artifact).
 - **Decisions:** `DECISIONS.md` ADR-009/010 (existing) + ADR-015 (this
   PR).
