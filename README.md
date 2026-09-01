@@ -1,4 +1,4 @@
-# ai-dev-team
+# agent-team
 
 A multi-agent development team built on [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness),
 orchestrated with Docker Compose. Eight DSH agents — **pm**, **ba**,
@@ -17,7 +17,7 @@ center (DSH Web UI) and a task-board dashboard.
         ┌────────────────┼──────────────────┐
         │                │                  │
         ▼                ▼                  ▼
-   dsh-pm  dsh-ba  dsh-backend        dsh-owner (web UI :3080)
+   dsh-pm  dsh-ba  dsh-backend        dsh-owner (web UI :3082)
    dsh-frontend dsh-tester        dashboard (task board :8080)
    dsh-reviewer dsh-cto
    dsh-accountant (Odoo MCP)
@@ -43,7 +43,14 @@ files. The `dsh-owner` container is the exception: it serves the DSH
 
 - **One Dockerfile, eight containers.** `docker/dsh/Dockerfile` builds the
   DSH image once; compose services differ only by `AGENT_ID`,
-  `AGENT_ROLE`, and mounts.
+  `AGENT_ROLE`, `AGENT_EMAIL`, and mounts.
+- **Per-agent identity email.** Every agent owns a dedicated email
+  `<agent>@agent-team.local` (`AGENT_EMAIL` in compose): `pm@agent-team.local`,
+  `backend@agent-team.local`, … The runner uses it as the git author
+  and registers it with the orchestrator (`/api/agents`); the PM agent
+  assigns Redmine issues to the responsible agent's Redmine user by that
+  email. Provision the Redmine users once with
+  `scripts/create-redmine-users.sh` (or `.ps1`).
 - **Pinned DSH.** DSH is a developer preview with frequent breaking
   changes, so `DSH_REF` defaults to a specific commit
   (`cd5ef81`, master @ `0.1.2-alpha.1`). Override with
@@ -61,11 +68,16 @@ files. The `dsh-owner` container is the exception: it serves the DSH
   `http://localhost:3000`; the pm/ba/tester/cto agents reach it through
   an MCP bridge (`redmine-mcp`) and `mcp__redmine__*` tools. The
   orchestrator task DB stays the system of record for agent work.
+- **Traceable identities.** Every agent owns a dedicated
+  username/password/email (`<agent>@agent-team.local`, see
+  `agents/README.md`); the `traceability` skill (mounted in every agent
+  workspace) requires all system interactions to use the agent's own
+  identity so every action can be traced back to who did what, when.
 
 ## Directory layout
 
 ```text
-ai-dev-team/
+agent-team/
 ├── docker-compose.yml        # 19 services: postgres, redis, orchestrator, dashboard, owner,
 │                             #   redmine-db, redmine, redmine-mcp, playwright-mcp,
 │                             #   github-mcp, odoo-mcp, 8 agents
@@ -106,11 +118,13 @@ ai-dev-team/
 │                                    #   pulls, VAS report mapping, checklist
 │                                    #   (accountant)
 ├── dashboard/                # task board (nginx + static single-file UI)
-│   ├── nginx.conf            # proxies /api to the orchestrator
+│   ├── nginx.conf.template   # proxies /api to the orchestrator (+ X-Api-Key)
 │   └── html/index.html       # board: projects/tasks/agents/events
 ├── scripts/                  # host-side triggers (monthly closing, ...)
 │   ├── monthly-close.ps1     #   create + dispatch the accountant task
-│   └── monthly-close.sh      #   (PowerShell / bash for cron scheduling)
+│   ├── monthly-close.sh      #   (PowerShell / bash for cron scheduling)
+│   ├── create-redmine-users.*#   provision per-agent Redmine users
+│   └── worker-laptop.*       #   run an agent on a remote laptop (distributed)
 ├── workspaces/               # one isolated project copy per agent
 │   ├── pm/  ba/  backend/  frontend/  tester/  reviewer/  cto/
 │   ├── accountant/  owner/
@@ -171,7 +185,8 @@ in the container environment.
 The owner (the human CEO) has two entry points — no curl needed:
 
 1. **Command center (chat)** — `dsh-owner` serves the DSH Web UI at
-   `http://localhost:3080`. Chat in plain language ("thêm tính năng X
+   `http://localhost:3082` (override with `DSH_OWNER_PORT`; 3080 is
+   reserved for other tooling). Chat in plain language ("thêm tính năng X
    cho khách hàng…"); the owner assistant answers in your language and
    turns intent into tasks through the orchestrator API.
 
@@ -179,7 +194,8 @@ The owner (the human CEO) has two entry points — no curl needed:
 
    ```bash
    docker logs dsh-owner 2>&1 | grep -o 'http://127.0.0.1:3080/?token=[A-Za-z0-9_-]*' | tail -1
-   # open that URL (swap 127.0.0.1 for localhost), it mints a 30-day cookie
+   # open that URL with the published port: swap 127.0.0.1 for localhost
+   # and 3080 for ${DSH_OWNER_PORT:-3082}; it mints a 30-day cookie
    ```
 
 2. **Task board** — `http://localhost:8080`: live view of projects,
@@ -341,7 +357,7 @@ from booting.
 
 Playwright details:
 
-- Image `ai-team/playwright-mcp:local` builds from
+- Image `agent-team/playwright-mcp:local` builds from
   `docker/playwright-mcp/Dockerfile` (@playwright/mcp pinned, Chromium
   + system deps, headless, `--isolated`, `--caps testing`).
 - Screenshots are written to `workspaces/tester/artifacts/`, which is
@@ -409,9 +425,13 @@ Two-way sync makes Redmine the human front-end for the team's work:
 - **Redmine → orchestrator** (poller, every 30s): open issues of the
   Redmine project whose subject follows `[<agent>] <title>` (agent ∈
   pm/ba/frontend/backend/tester/reviewer/cto/owner) are imported as
-  tasks and the issue moves to *In Progress*. Import is idempotent
-  and never auto-dispatches — dispatch stays a human/PM/owner
-  decision.
+  tasks and the issue moves to *In Progress*. Import is idempotent.
+  Newly imported tasks are **auto-dispatched** to their agent right
+  away; on orchestrator boot, previously imported tasks still sitting
+  in `todo` are dispatched too. Set `REDMINE_AUTO_DISPATCH=false` in
+  `.env` to keep dispatch a human/PM/owner decision (task waits in
+  `todo`, dispatch via the dashboard button or
+  `POST /api/tasks/:id/dispatch`).
 - **orchestrator → Redmine** (on run result): the linked issue is
   closed (`succeeded`) or rejected (`failed`) with a note carrying
   the summary, branch and PR URL.
@@ -508,7 +528,7 @@ Migrations run automatically on orchestrator boot (idempotent).
   FastMCP host allowlist rejected the client's `Host` header — keep
   `MCP_ALLOWED_HOSTS` (compose.integrations.yaml) in sync. Odoo in a
   separate compose project needs `docker network connect
-  <net> ai-team-odoo-mcp` + `ODOO_URL=http://odoo:8069` (see
+  <net> agent-team-odoo-mcp` + `ODOO_URL=http://odoo:8069` (see
   `scripts/odoo-network.ps1` and
   [`docs/ODOO-MONTHLY-CLOSING.md`](docs/ODOO-MONTHLY-CLOSING.md)).
 - Build fails on `pnpm install`: the DSH image build needs network access

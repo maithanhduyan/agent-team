@@ -4,8 +4,10 @@
  * Direction 1 — Redmine -> orchestrator (`importRedmineIssues`, polled):
  *   open issues of the team's Redmine project whose subject follows the
  *   convention `[<agent>] <title>` become orchestrator tasks (linked via
- *   tasks.redmine_issue_id). Import is idempotent and never auto-dispatches:
- *   dispatch stays a human/PM/owner decision.
+ *   tasks.redmine_issue_id). Import is idempotent. Newly imported task
+ *   ids are returned so the caller can auto-dispatch them immediately
+ *   (see config.redmineAutoDispatch); with auto-dispatch disabled the
+ *   task waits in `todo` for a human/PM/owner to dispatch it.
  *
  * Direction 2 — orchestrator -> Redmine (`updateRedmineOnResult`, called
  *   from the run-result route): when a linked task finishes, the issue is
@@ -56,12 +58,13 @@ function redmineFetch(config: Config, path: string, init: RequestInit = {}): Pro
 /**
  * Import open Redmine issues as orchestrator tasks. Runs on boot and then
  * on an interval; safe to call concurrently (unique index on
- * redmine_issue_id makes the insert idempotent).
+ * redmine_issue_id makes the insert idempotent). Returns the ids of the
+ * tasks that were newly imported (empty when nothing new or sync disabled).
  */
-export async function importRedmineIssues(ctx: Ctx): Promise<number> {
+export async function importRedmineIssues(ctx: Ctx): Promise<number[]> {
     const { config, db } = ctx;
     if (!config.redmineApiKey)
-        return 0; // sync disabled
+        return []; // sync disabled
     let response: Response;
     try {
         response = await redmineFetch(
@@ -71,25 +74,25 @@ export async function importRedmineIssues(ctx: Ctx): Promise<number> {
     }
     catch (err) {
         console.warn(`[redmine] list issues failed: ${(err as Error).message}`);
-        return 0;
+        return [];
     }
     if (!response.ok) {
         console.warn(`[redmine] list issues HTTP ${response.status}`);
-        return 0;
+        return [];
     }
     const body = (await response.json()) as { issues?: RedmineIssue[] };
     const issues = body.issues ?? [];
     if (issues.length === 0)
-        return 0;
+        return [];
 
     const projectRes = await db.query('select id from projects order by id limit 1');
     if (projectRes.rows.length === 0) {
         console.warn('[redmine] no orchestrator project to import issues into');
-        return 0;
+        return [];
     }
     const projectId = projectRes.rows[0].id as number;
 
-    let imported = 0;
+    const importedTaskIds: number[] = [];
     for (const issue of issues) {
         const parsed = parseSubject(issue.subject);
         if (!parsed) {
@@ -107,7 +110,7 @@ export async function importRedmineIssues(ctx: Ctx): Promise<number> {
             if (rows.length === 0)
                 continue; // already imported
             const taskId = rows[0].id as number;
-            imported += 1;
+            importedTaskIds.push(taskId);
             console.log(`[redmine] imported issue #${issue.id} as task ${taskId} (${parsed.agent})`);
             // Mark the issue in progress and record the mapping in a note.
             await redmineFetch(config, `/issues/${issue.id}.json`, {
@@ -120,7 +123,7 @@ export async function importRedmineIssues(ctx: Ctx): Promise<number> {
             console.warn(`[redmine] import issue #${issue.id} failed: ${(err as Error).message}`);
         }
     }
-    return imported;
+    return importedTaskIds;
 }
 
 /** Update the linked Redmine issue when an orchestrator task finishes. */
