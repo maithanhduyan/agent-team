@@ -50,3 +50,7 @@ agent-desktop/memory/*
 # records written by the T12 runner; keep the README, never commit
 # generated run manifests)
 agent-desktop/evolution/runs/*.json
+
+# T14 harness — generated result JSON (commit only the golden reference)
+agent-desktop/evolution/harness/results/*
+!agent-desktop/evolution/harness/results/mode-a-reference.golden.json

@@ -1,0 +1,58 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://agent-team.local/schemas/gepa-harness-manifest-v1.json",
+  "title": "GEPA harness manifest — scenario classes + version (T14)",
+  "description": "Declares the scenario classes (happy-path, efs, junction, service-password) and the install-dsh eval cases. Consumed by T11 (coverage standard, COV-1) and T12 (fitness gate).",
+  "type": "object",
+  "required": ["schema_version", "manifest_version", "skill", "scenario_classes", "cases"],
+  "additionalProperties": true,
+  "properties": {
+    "schema_version": { "type": "string", "const": "1.0" },
+    "manifest_version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "skill": { "type": "string", "const": "install-dsh" },
+    "scenario_classes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "description", "min_cases"],
+        "properties": {
+          "id": { "type": "string" },
+          "label": { "type": "string" },
+          "description": { "type": "string" },
+          "min_cases": { "type": "integer", "minimum": 1 }
+        }
+      }
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "scenario", "weight", "title", "description", "pass_criteria", "planted", "severity", "modes"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+          "scenario": { "type": "string" },
+          "weight": { "type": "number", "minimum": 0.000001, "maximum": 1 },
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "pass_criteria": { "type": "string" },
+          "planted": { "type": "boolean" },
+          "severity": { "enum": ["critical", "major", "minor"] },
+          "modes": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "enum": ["A", "B"] }
+          }
+        }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "properties": {
+        "min_cases_per_class": { "type": "integer", "minimum": 1 },
+        "min_total": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

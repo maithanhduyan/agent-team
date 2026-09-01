@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://agent-team.local/schemas/gepa-harness-result-v1.json",
+  "title": "GEPA harness result — unified machine-readable suite output (T14, both modes)",
+  "description": "Result JSON emitted by Mode A (offline repo/CI) and Mode B (owner-run Windows Sandbox). Identical schema for both modes so the T12 fitness gate consumes either. fitness(c) = Σ w_i·pass_i / Σ w_i, threshold 1.0 (SEC-GEPA-02).",
+  "type": "object",
+  "required": ["schema_version", "harness_version", "manifest_version", "mode", "run_id", "skill", "candidate", "started_at", "ended_at", "cases", "summary"],
+  "additionalProperties": true,
+  "properties": {
+    "schema_version": { "type": "string", "const": "1.0" },
+    "harness_version": { "type": "string" },
+    "manifest_version": { "type": "string" },
+    "mode": { "enum": ["A", "B"] },
+    "run_id": { "type": "string" },
+    "skill": { "type": "string", "const": "install-dsh" },
+    "candidate": {
+      "type": ["object", "null"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "enum": ["base", "candidate"] },
+        "path": { "type": ["string", "null"] },
+        "size_bytes": { "type": ["integer", "null"], "minimum": 0 }
+      }
+    },
+    "started_at": { "type": "string", "format": "date-time" },
+    "ended_at": { "type": "string", "format": "date-time" },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "scenario", "status", "weight", "captured_output"],
+        "properties": {
+          "id": { "type": "string" },
+          "scenario": { "type": "string" },
+          "status": { "enum": ["pass", "fail", "skip", "error"] },
+          "weight": { "type": "number", "minimum": 0.000001, "maximum": 1 },
+          "expected": { "type": "string" },
+          "actual": { "type": "string" },
+          "captured_output": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "duration_ms": { "type": "number", "minimum": 0 }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["total", "passed", "failed", "skipped", "errors", "fitness", "threshold_met"],
+      "properties": {
+        "total": { "type": "integer", "minimum": 0 },
+        "passed": { "type": "integer", "minimum": 0 },
+        "failed": { "type": "integer", "minimum": 0 },
+        "skipped": { "type": "integer", "minimum": 0 },
+        "errors": { "type": "integer", "minimum": 0 },
+        "fitness": { "type": "number", "minimum": 0, "maximum": 1 },
+        "threshold_met": { "type": "boolean" }
+      }
+    }
+  }
+}
