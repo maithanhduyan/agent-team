@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gepa-sidecar"
+version = "0.1.0"
+description = "GEPA evolution sidecar (DSPy + GEPA core, hermes pattern) for agent-desktop v0.5 (T12)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Proprietary" }
+# Runtime is stdlib-only; dspy is an optional backend (SEC-GEPA-10).
+dependencies = []
+
+[project.optional-dependencies]
+dspy = ["dspy>=0.1.0"]
+
+[tool.setuptools.packages.find]
+include = ["gepa_sidecar*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
