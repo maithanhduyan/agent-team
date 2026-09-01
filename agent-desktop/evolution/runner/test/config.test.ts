@@ -81,8 +81,8 @@ test('judge caps env surface (Q5 defaults 15/10/10)', () => {
 
 test('judge panel models parsed in priority order', () => {
     const cfg = loadEvolutionConfig(
-        { ...BASE, JUDGE_PANEL_MODELS: 'gemini-3,deepseek,gpt-4' },
+        { ...BASE, JUDGE_PANEL_MODELS: 'gemini-2.5-pro,deepseek,gpt-4' },
         '/opt/agent-desktop',
     );
-    assert.deepEqual(cfg.judgePanelModels, ['gemini-3', 'deepseek', 'gpt-4']);
+    assert.deepEqual(cfg.judgePanelModels, ['gemini-2.5-pro', 'deepseek', 'gpt-4']);
 });

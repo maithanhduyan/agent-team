@@ -23,7 +23,7 @@ test('fresh tracker: zero spend, defaults caps, file created on save', async (t)
     assert.equal(tracker.monthlySpend('deepseek'), 0);
     assert.equal(tracker.capFor('deepseek'), 15);
     assert.equal(tracker.capFor('gpt-4'), 10);
-    assert.equal(tracker.capFor('gemini-3'), 10);
+    assert.equal(tracker.capFor('gemini-2.5-pro'), 10);
     assert.equal(tracker.isCapped('deepseek'), false);
 
     await tracker.save();
@@ -66,7 +66,7 @@ test('allCapped: pause condition when every model is at its cap (SEC-COST-01)', 
     await tracker.recordCost('deepseek', 20);
     await tracker.recordCost('gpt-4', 20);
     assert.equal(tracker.allCapped(['deepseek', 'gpt-4']), true);
-    assert.equal(tracker.allCapped(['deepseek', 'gpt-4', 'gemini-3']), false);
+    assert.equal(tracker.allCapped(['deepseek', 'gpt-4', 'gemini-2.5-pro']), false);
 });
 
 test('a new calendar month resets the accumulated spend', async (t) => {
@@ -101,11 +101,11 @@ test('summary reports per-model spend + caps without any keys (SEC-COST-02)', as
     assert.equal(summary.providers.deepseek.spentUsd, 3.0);
     assert.equal(summary.providers.deepseek.capUsd, 15);
     assert.equal(summary.providers['gpt-4'].spentUsd, 0);
-    assert.equal(summary.providers['gemini-3'].spentUsd, 0);
+    assert.equal(summary.providers['gemini-2.5-pro'].spentUsd, 0);
     const serialized = JSON.stringify(summary);
     assert.ok(!serialized.includes('sk-'), 'no key-shaped strings in the report');
 });
 
 test('DEFAULT_JUDGE_CAPS matches spec §9.5 (15/10/10)', () => {
-    assert.deepEqual(DEFAULT_JUDGE_CAPS, { deepseek: 15, 'gpt-4': 10, 'gemini-3': 10 });
+    assert.deepEqual(DEFAULT_JUDGE_CAPS, { deepseek: 15, 'gpt-4': 10, 'gemini-2.5-pro': 10 });
 });

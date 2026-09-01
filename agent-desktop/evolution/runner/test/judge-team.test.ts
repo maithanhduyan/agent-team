@@ -64,7 +64,7 @@ function makeCfg(over: Partial<JudgeTeamConfig> = {}): JudgeTeamConfig {
 }
 
 async function makeCost(dir: string, month = '2026-09') {
-    return new CostTracker(dir, { month, caps: { deepseek: 15, 'gpt-4': 10, 'gemini-3': 10 } });
+    return new CostTracker(dir, { month, caps: { deepseek: 15, 'gpt-4': 10, 'gemini-2.5-pro': 10 } });
 }
 
 test('R-JUDGE-1: single DeepSeek model (default panel) verdict is decisive', async () => {
@@ -91,22 +91,22 @@ test('SEC-KEY-03: missing key (disabled provider) is skipped, not a failure', as
     const dir = await mkdtemp(path.join(tmpdir(), `gepa-judge-${seq++}-`));
     try {
         const cost = await makeCost(dir);
-        // Panel asks for [deepseek, gpt-4, gemini-3] but only deepseek is
-        // enabled — gpt-4/gemini-3 have no key ⇒ skipped (SEC-KEY-03).
+        // Panel asks for [deepseek, gpt-4, gemini-2.5-pro] but only deepseek is
+        // enabled — gpt-4/gemini-2.5-pro have no key ⇒ skipped (SEC-KEY-03).
         const out = await judgeCandidate({
             candidateText: CANDIDATE,
             baseSkillText: BASE,
             fitness: { fitness: 1.0, threshold_met: true, regression_pass: true },
-            cfg: makeCfg({ panelModels: ['deepseek', 'gpt-4', 'gemini-3'] }),
+            cfg: makeCfg({ panelModels: ['deepseek', 'gpt-4', 'gemini-2.5-pro'] }),
             cost,
             providers: {
                 deepseek: mockProvider('deepseek', { kind: 'verdict', name: 'approve' }),
                 'gpt-4': mockProvider('gpt-4', { kind: 'verdict', name: 'approve' }, { enabled: false }),
-                'gemini-3': mockProvider('gemini-3', { kind: 'verdict', name: 'approve' }, { enabled: false }),
+                'gemini-2.5-pro': mockProvider('gemini-2.5-pro', { kind: 'verdict', name: 'approve' }, { enabled: false }),
             },
         });
         assert.equal(out.gate, 'approve');
-        assert.deepEqual(out.skipped_models.sort(), ['gemini-3', 'gpt-4']);
+        assert.deepEqual(out.skipped_models.sort(), ['gemini-2.5-pro', 'gpt-4']);
         assert.equal(out.per_model['gpt-4'], undefined, 'skipped model has no verdict');
     } finally {
         await rm(dir, { recursive: true, force: true });
@@ -145,18 +145,98 @@ test('SEC-GEPA-09: ALL models capped ⇒ gate paused — no unjudged write, no c
             candidateText: CANDIDATE,
             baseSkillText: BASE,
             fitness: { fitness: 1.0, threshold_met: true, regression_pass: true },
-            cfg: makeCfg({ panelModels: ['deepseek', 'gpt-4', 'gemini-3'] }),
+            cfg: makeCfg({ panelModels: ['deepseek', 'gpt-4', 'gemini-2.5-pro'] }),
             cost,
             providers: {
                 deepseek: mockProvider('deepseek', { kind: 'verdict', name: 'approve' }, { spentUsd: 15, capUsd: 15 }),
                 'gpt-4': mockProvider('gpt-4', { kind: 'verdict', name: 'approve' }, { spentUsd: 10, capUsd: 10 }),
-                'gemini-3': mockProvider('gemini-3', { kind: 'verdict', name: 'approve' }, { spentUsd: 10, capUsd: 10 }),
+                'gemini-2.5-pro': mockProvider('gemini-2.5-pro', { kind: 'verdict', name: 'approve' }, { spentUsd: 10, capUsd: 10 }),
             },
         });
         assert.equal(out.gate, 'paused');
         assert.equal(out.reason, 'all_models_capped');
-        assert.deepEqual(out.disabled_models.sort(), ['deepseek', 'gemini-3', 'gpt-4']);
+        assert.deepEqual(out.disabled_models.sort(), ['deepseek', 'gemini-2.5-pro', 'gpt-4']);
         assert.equal(out.per_model.deepseek, undefined, 'no verdict recorded when paused');
+    } finally {
+        await rm(dir, { recursive: true, force: true });
+    }
+});
+
+test('SEC-GEPA-09: gemini-2.5-pro at its monthly cap is auto-disabled (SEC-COST-01)', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), `gepa-judge-${seq++}-`));
+    try {
+        const cost = await makeCost(dir);
+        const out = await judgeCandidate({
+            candidateText: CANDIDATE,
+            baseSkillText: BASE,
+            fitness: { fitness: 1.0, threshold_met: true, regression_pass: true },
+            cfg: makeCfg({ panelModels: ['deepseek', 'gpt-4', 'gemini-2.5-pro'] }),
+            cost,
+            providers: {
+                deepseek: mockProvider('deepseek', { kind: 'verdict', name: 'approve' }),
+                'gpt-4': mockProvider('gpt-4', { kind: 'verdict', name: 'approve' }),
+                'gemini-2.5-pro': mockProvider('gemini-2.5-pro', { kind: 'verdict', name: 'approve' }, { spentUsd: 10, capUsd: 10 }),
+            },
+        });
+        assert.deepEqual(out.disabled_models, ['gemini-2.5-pro']);
+        assert.equal(out.gate, 'approve', 'remaining panel decides');
+        assert.equal(out.per_model['gemini-2.5-pro'], undefined, 'capped model has no verdict');
+    } finally {
+        await rm(dir, { recursive: true, force: true });
+    }
+});
+
+test('Q5: full 3-model panel (deepseek + gpt-4 + gemini-2.5-pro) runs and reports per-model cost', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), `gepa-judge-${seq++}-`));
+    try {
+        const cost = await makeCost(dir);
+        const out = await judgeCandidate({
+            candidateText: CANDIDATE,
+            baseSkillText: BASE,
+            fitness: { fitness: 1.0, threshold_met: true, regression_pass: true },
+            cfg: makeCfg({ panelModels: ['deepseek', 'gpt-4', 'gemini-2.5-pro'] }),
+            cost,
+            providers: {
+                deepseek: mockProvider('deepseek', { kind: 'verdict', name: 'approve' }),
+                'gpt-4': mockProvider('gpt-4', { kind: 'verdict', name: 'approve' }),
+                'gemini-2.5-pro': mockProvider('gemini-2.5-pro', { kind: 'verdict', name: 'revise' }),
+            },
+        });
+        assert.equal(out.gate, 'approve', 'any-consensus: one approve is enough');
+        assert.deepEqual(Object.keys(out.per_model).sort(), ['deepseek', 'gemini-2.5-pro', 'gpt-4']);
+        assert.equal(out.per_model['gemini-2.5-pro'], 'revise');
+        // Cost recorded per model (SEC-COST-01) — names + USD only, no
+        // keys (SEC-KEY-02 / SEC-LOG-02).
+        assert.equal(out.cost.providers.deepseek.spentUsd, 0.001);
+        assert.equal(out.cost.providers['gpt-4'].spentUsd, 0.001);
+        assert.equal(out.cost.providers['gemini-2.5-pro'].spentUsd, 0.001);
+    } finally {
+        await rm(dir, { recursive: true, force: true });
+    }
+});
+
+test('runtime fallback: one model errors ⇒ auto-removed, pipeline continues (skip, never fail)', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), `gepa-judge-${seq++}-`));
+    try {
+        const cost = await makeCost(dir);
+        const out = await judgeCandidate({
+            candidateText: CANDIDATE,
+            baseSkillText: BASE,
+            fitness: { fitness: 1.0, threshold_met: true, regression_pass: true },
+            cfg: makeCfg({ panelModels: ['deepseek', 'gpt-4', 'gemini-2.5-pro'] }),
+            cost,
+            providers: {
+                deepseek: mockProvider('deepseek', { kind: 'verdict', name: 'approve' }),
+                'gpt-4': mockProvider('gpt-4', { kind: 'error', message: 'transport failure' }),
+                'gemini-2.5-pro': mockProvider('gemini-2.5-pro', { kind: 'verdict', name: 'approve' }),
+            },
+        });
+        assert.equal(out.gate, 'approve', 'a single runtime error never blocks the pipeline');
+        assert.equal(out.per_model['gpt-4'], 'error', 'failed model recorded as error (R-JUDGE-4)');
+        assert.equal(out.per_model.deepseek, 'approve');
+        assert.equal(out.per_model['gemini-2.5-pro'], 'approve');
+        assert.equal(out.verdicts['gpt-4'], undefined, 'failed model contributes no verdict');
+        assert.equal(out.cost.providers['gpt-4'].spentUsd, 0, 'failed call records no cost');
     } finally {
         await rm(dir, { recursive: true, force: true });
     }
@@ -208,12 +288,12 @@ test('consensus=majority: 1 approve / 2 reject ⇒ reject with disagreement', as
             candidateText: CANDIDATE,
             baseSkillText: BASE,
             fitness: { fitness: 1.0, threshold_met: true, regression_pass: true },
-            cfg: makeCfg({ panelModels: ['deepseek', 'gpt-4', 'gemini-3'], consensus: 'majority' }),
+            cfg: makeCfg({ panelModels: ['deepseek', 'gpt-4', 'gemini-2.5-pro'], consensus: 'majority' }),
             cost,
             providers: {
                 deepseek: mockProvider('deepseek', { kind: 'verdict', name: 'approve' }),
                 'gpt-4': mockProvider('gpt-4', { kind: 'verdict', name: 'reject' }),
-                'gemini-3': mockProvider('gemini-3', { kind: 'verdict', name: 'reject' }),
+                'gemini-2.5-pro': mockProvider('gemini-2.5-pro', { kind: 'verdict', name: 'reject' }),
             },
         });
         assert.equal(out.gate, 'reject');

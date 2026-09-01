@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
     DeepSeekProvider,
     Gpt4Provider,
-    Gemini3Provider,
+    Gemini25ProProvider,
     completionCostUsd,
     buildPanelFromConfig,
     registerProvider,
@@ -71,7 +71,7 @@ test('DeepSeekProvider.generate throws when disabled (no key)', async () => {
     await assert.rejects(() => provider.generate({ prompt: 'x' }), /not enabled/);
 });
 
-test('Gemini3Provider sends the key via x-goog-api-key header, never the URL (SEC-KEY-01)', async () => {
+test('Gemini25ProProvider sends the key via x-goog-api-key header, never the URL (SEC-KEY-01)', async () => {
     let called: { url: string; headers: Record<string, string> } | undefined;
     const fetchImpl = (async (url: string, init: RequestInit) => {
         called = { url: String(url), headers: init.headers as Record<string, string> };
@@ -81,13 +81,17 @@ test('Gemini3Provider sends the key via x-goog-api-key header, never the URL (SE
         }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }) as typeof fetch;
 
-    const provider = new Gemini3Provider('gemini-3-pro', {
+    const provider = new Gemini25ProProvider('gemini-2.5-pro', {
         env: { GEMINI_API_KEY: 'AIzaSecretsSecretSecret123456' },
         fetchImpl,
     });
     const res = await provider.generate({ prompt: 'x' });
     assert.ok(called);
     assert.ok(!called!.url.includes('AIzaSecrets'), 'key must not appear in the URL');
+    assert.ok(
+        called!.url.includes('/models/gemini-2.5-pro:generateContent'),
+        'real API model id gemini-2.5-pro in the request URL (Q5, Redmine #52)',
+    );
     assert.equal(called!.headers['x-goog-api-key'], 'AIzaSecretsSecretSecret123456');
     assert.equal(res.usage.outputTokens, 5);
 });
@@ -101,9 +105,9 @@ test('registry + buildPanelFromConfig: missing-key models are skipped, not failu
     clearProviders();
     registerProvider(new DeepSeekProvider('deepseek-chat', { env: { DEEPSEEK_API_KEY: 'sk-test1234567890' } }));
     registerProvider(new Gpt4Provider('gpt-4', { env: {} })); // no key
-    registerProvider(new Gemini3Provider('gemini-3-pro', { env: {} }));
+    registerProvider(new Gemini25ProProvider('gemini-2.5-pro', { env: {} }));
 
-    const panel = buildPanelFromConfig({ judgePanelModels: ['deepseek', 'gpt-4', 'gemini-3'] }, { env: {} });
+    const panel = buildPanelFromConfig({ judgePanelModels: ['deepseek', 'gpt-4', 'gemini-2.5-pro'] }, { env: {} });
     assert.deepEqual(panel.map((p) => p.name), ['deepseek']);
     assert.equal(getProvider('deepseek')?.name, 'deepseek');
     clearProviders();
@@ -111,7 +115,7 @@ test('registry + buildPanelFromConfig: missing-key models are skipped, not failu
 
 test('defaultProviders registers all three optional modules', () => {
     const providers = defaultProviders({ env: {} });
-    assert.deepEqual(providers.map((p) => p.name), ['deepseek', 'gpt-4', 'gemini-3']);
+    assert.deepEqual(providers.map((p) => p.name), ['deepseek', 'gpt-4', 'gemini-2.5-pro']);
 });
 
 test('monthlyCostUsd reads the cost tracker (SEC-COST-01)', async () => {
