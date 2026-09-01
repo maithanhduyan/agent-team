@@ -1,0 +1,171 @@
+{
+  "schema_version": "1.0",
+  "manifest_version": "1.0.0",
+  "skill": "install-dsh",
+  "description": "T14 harness manifest — install-dsh eval suite: happy-path (install/idempotency/cleanup) + planted failure classes (EFS encryption, junction handling, service-password handling). Scenario classes here are the coverage standard for the T11 eval dataset builder (COV-1: a declared class with no cases makes the dataset invalid).",
+  "scenario_classes": [
+    {
+      "id": "happy-path",
+      "label": "Happy path",
+      "description": "Normal install-dsh install, idempotency and cleanup on a clean Windows target",
+      "min_cases": 3
+    },
+    {
+      "id": "efs",
+      "label": "EFS encryption",
+      "description": "Windows Encrypting File System (EFS): encrypted target dirs, encrypted sources, cleanup of encrypted artifacts",
+      "min_cases": 3
+    },
+    {
+      "id": "junction",
+      "label": "Junction handling",
+      "description": "NTFS junction / reparse points: path resolution, bounded traversal (no recursion loops), junction-safe cleanup",
+      "min_cases": 3
+    },
+    {
+      "id": "service-password",
+      "label": "Service password handling",
+      "description": "Windows service account password change: credential update, service restart, failure-safe rollback",
+      "min_cases": 3
+    }
+  ],
+  "cases": [
+    {
+      "id": "hp-install",
+      "scenario": "happy-path",
+      "weight": 1,
+      "title": "Install creates DSH artifacts on a clean target",
+      "description": "On a clean target the install creates the DSH binary marker and the config file and reports success.",
+      "pass_criteria": "install returns ok; artifacts include bin/dsh and config/dsh.json",
+      "planted": false,
+      "severity": "critical",
+      "modes": ["A", "B"]
+    },
+    {
+      "id": "hp-idempotency",
+      "scenario": "happy-path",
+      "weight": 1,
+      "title": "Re-running install is idempotent",
+      "description": "Running install twice leaves the same file set: the second run does not duplicate or corrupt artifacts.",
+      "pass_criteria": "second install returns ok; file set after second run equals file set after first run",
+      "planted": false,
+      "severity": "major",
+      "modes": ["A", "B"]
+    },
+    {
+      "id": "hp-cleanup",
+      "scenario": "happy-path",
+      "weight": 1,
+      "title": "Cleanup removes artifacts and is safe to repeat",
+      "description": "Cleanup removes the installed artifacts; a second cleanup is a safe no-op.",
+      "pass_criteria": "cleanup removes bin + config; second cleanup returns ok without error",
+      "planted": false,
+      "severity": "major",
+      "modes": ["A", "B"]
+    },
+    {
+      "id": "efs-detect-target",
+      "scenario": "efs",
+      "weight": 1,
+      "title": "EFS-encrypted install target is detected",
+      "description": "When the install target directory is EFS-encrypted the skill must detect it and report an EFS-specific outcome instead of silently proceeding.",
+      "pass_criteria": "detected == true and message mentions EFS",
+      "planted": true,
+      "severity": "critical",
+      "modes": ["A", "B"]
+    },
+    {
+      "id": "efs-copy-source",
+      "scenario": "efs",
+      "weight": 1,
+      "title": "Copying from an EFS-encrypted source yields plaintext",
+      "description": "Copying a file from an EFS-encrypted source must produce readable plaintext at the destination, not a raw ciphertext blob.",
+      "pass_criteria": "destination content equals the plaintext (no ciphertext prefix)",
+      "planted": true,
+      "severity": "critical",
+      "modes": ["A", "B"]
+    },
+    {
+      "id": "efs-cleanup-encrypted",
+      "scenario": "efs",
+      "weight": 1,
+      "title": "Cleanup removes EFS-encrypted artifacts",
+      "description": "Cleanup must remove artifacts inside an EFS-encrypted directory without leaving residue or failing.",
+      "pass_criteria": "after cleanup no install artifacts remain under the encrypted dir",
+      "planted": true,
+      "severity": "major",
+      "modes": ["A", "B"]
+    },
+    {
+      "id": "jct-resolve",
+      "scenario": "junction",
+      "weight": 1,
+      "title": "Junction path is resolved to its real target",
+      "description": "A path whose component is an NTFS junction must be resolved to the real target before file operations.",
+      "pass_criteria": "resolved path points at the junction target, not the link",
+      "planted": true,
+      "severity": "critical",
+      "modes": ["A", "B"]
+    },
+    {
+      "id": "jct-traverse",
+      "scenario": "junction",
+      "weight": 1,
+      "title": "Traversal through junctions terminates",
+      "description": "Recursive traversal that crosses a junction (or a junction cycle) must terminate instead of looping forever.",
+      "pass_criteria": "traversal reports terminated == true",
+      "planted": true,
+      "severity": "critical",
+      "modes": ["A", "B"]
+    },
+    {
+      "id": "jct-cleanup",
+      "scenario": "junction",
+      "weight": 1,
+      "title": "Cleanup removes the junction link but keeps the target contents",
+      "description": "When an installed path is a junction link, cleanup removes the link only and must not delete the junction target's contents.",
+      "pass_criteria": "link removed == true and target contents intact == true",
+      "planted": true,
+      "severity": "major",
+      "modes": ["A", "B"]
+    },
+    {
+      "id": "svc-update-credential",
+      "scenario": "service-password",
+      "weight": 1,
+      "title": "Service account password change updates the stored credential",
+      "description": "Changing the DSH service account password updates the credential store.",
+      "pass_criteria": "stored credential hash equals the new password hash",
+      "planted": true,
+      "severity": "critical",
+      "modes": ["A", "B"]
+    },
+    {
+      "id": "svc-restart",
+      "scenario": "service-password",
+      "weight": 1,
+      "title": "Service is restarted after a credential change",
+      "description": "After the credential is updated the service must be restarted so the new logon takes effect.",
+      "pass_criteria": "restart counter incremented and service running after change",
+      "planted": true,
+      "severity": "critical",
+      "modes": ["A", "B"]
+    },
+    {
+      "id": "svc-failure-safe",
+      "scenario": "service-password",
+      "weight": 1,
+      "title": "Failed password change preserves the previous credential",
+      "description": "If updating the service credential fails, the previous credential must be preserved and a clear error returned (no lockout / no partial write).",
+      "pass_criteria": "on simulated update failure the store keeps the old credential and an error is reported",
+      "planted": true,
+      "severity": "major",
+      "modes": ["A", "B"]
+    }
+  ],
+  "coverage": {
+    "min_cases_per_class": 3,
+    "min_total": 12,
+    "note": "COV-1 (T10 §4.3): every declared scenario class must have at least one case; the dataset builder (T11) must reject a dataset that lacks a class."
+  }
+}

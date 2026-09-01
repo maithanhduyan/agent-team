@@ -1,0 +1,178 @@
+{
+  "schema_version": "1.0",
+  "harness_version": "1.0.0",
+  "manifest_version": "1.0.0",
+  "mode": "A",
+  "run_id": "mode-a-reference-golden",
+  "skill": "install-dsh",
+  "candidate": {
+    "id": "reference",
+    "kind": "base",
+    "path": null,
+    "size_bytes": null
+  },
+  "started_at": "2026-09-01T00:00:00.000Z",
+  "ended_at": "2026-09-01T00:00:01.000Z",
+  "cases": [
+    {
+      "id": "hp-install",
+      "scenario": "happy-path",
+      "status": "pass",
+      "weight": 1,
+      "expected": "install ok; artifacts target/bin/dsh and target/config/dsh.json exist",
+      "actual": "install.ok=true bin=true config=true",
+      "captured_output": [
+        "behavior.install -> {\"ok\":true,\"message\":\"install complete\",\"artifacts\":[\"target/bin/dsh\",\"target/config/dsh.json\"]}"
+      ],
+      "duration_ms": 0
+    },
+    {
+      "id": "hp-idempotency",
+      "scenario": "happy-path",
+      "status": "pass",
+      "weight": 1,
+      "expected": "second install ok; file set unchanged (no duplicates)",
+      "actual": "first.ok=true second.ok=true filesBefore=2 filesAfter=2 same=true",
+      "captured_output": [
+        "install#1 -> {\"ok\":true,\"message\":\"install complete\",\"artifacts\":[\"target/bin/dsh\",\"target/config/dsh.json\"]}",
+        "install#2 -> {\"ok\":true,\"message\":\"install complete\",\"artifacts\":[\"target/bin/dsh\",\"target/config/dsh.json\"]}"
+      ],
+      "duration_ms": 0
+    },
+    {
+      "id": "hp-cleanup",
+      "scenario": "happy-path",
+      "status": "pass",
+      "weight": 1,
+      "expected": "cleanup removes artifacts; repeated cleanup is a safe no-op",
+      "actual": "install.ok=true cleanup1.ok=true remaining1=0 cleanup2.ok=true remaining2=0",
+      "captured_output": [
+        "install -> {\"ok\":true,\"message\":\"install complete\",\"artifacts\":[\"target/bin/dsh\",\"target/config/dsh.json\"]}",
+        "cleanup#1 -> {\"ok\":true,\"message\":\"cleanup complete\",\"remaining\":[]}",
+        "cleanup#2 -> {\"ok\":true,\"message\":\"cleanup complete\",\"remaining\":[]}"
+      ],
+      "duration_ms": 0
+    },
+    {
+      "id": "efs-detect-target",
+      "scenario": "efs",
+      "status": "pass",
+      "weight": 1,
+      "expected": "EFS-encrypted target detected; message mentions EFS",
+      "actual": "detected=true message=\"EFS: target directory is encrypted — decrypt or choose a non-encrypted target\"",
+      "captured_output": [
+        "behavior.efsDetectTarget -> {\"detected\":true,\"message\":\"EFS: target directory is encrypted — decrypt or choose a non-encrypted target\"}"
+      ],
+      "duration_ms": 0
+    },
+    {
+      "id": "efs-copy-source",
+      "scenario": "efs",
+      "status": "pass",
+      "weight": 1,
+      "expected": "copy from EFS-encrypted source yields plaintext (no CIPHERTEXT: prefix)",
+      "actual": "ok=true destContent=\"PLAINTEXT-123\"",
+      "captured_output": [
+        "behavior.efsCopySource -> {\"ok\":true,\"message\":\"decrypted on copy\",\"dstEncrypted\":false}"
+      ],
+      "duration_ms": 0
+    },
+    {
+      "id": "efs-cleanup-encrypted",
+      "scenario": "efs",
+      "status": "pass",
+      "weight": 1,
+      "expected": "cleanup removes artifacts inside an EFS-encrypted dir (no residue)",
+      "actual": "ok=true remaining=[]",
+      "captured_output": [
+        "behavior.efsCleanup -> {\"ok\":true,\"message\":\"cleanup removed encrypted artifacts\",\"remaining\":[]}"
+      ],
+      "duration_ms": 0
+    },
+    {
+      "id": "jct-resolve",
+      "scenario": "junction",
+      "status": "pass",
+      "weight": 1,
+      "expected": "resolved path points at real target (/tmp/gepa-harness-tDAKYx/real/target)",
+      "actual": "resolved=\"/tmp/gepa-harness-tDAKYx/real/target\"",
+      "captured_output": [
+        "behavior.jctResolve -> {\"resolvedPath\":\"/tmp/gepa-harness-tDAKYx/real/target\",\"message\":\"resolved junction\"}"
+      ],
+      "duration_ms": 0
+    },
+    {
+      "id": "jct-traverse",
+      "scenario": "junction",
+      "status": "pass",
+      "weight": 1,
+      "expected": "traversal through a junction cycle terminates (no infinite loop)",
+      "actual": "terminated=true visited=1",
+      "captured_output": [
+        "behavior.jctTraverse -> {\"terminated\":true,\"visited\":1,\"message\":\"traversed 1 nodes\"}"
+      ],
+      "duration_ms": 0
+    },
+    {
+      "id": "jct-cleanup",
+      "scenario": "junction",
+      "status": "pass",
+      "weight": 1,
+      "expected": "cleanup removes the junction link but keeps the target contents",
+      "actual": "linkRemoved=true targetIntact=true linkGone=true targetKept=true",
+      "captured_output": [
+        "behavior.jctCleanup -> {\"linkRemoved\":true,\"targetIntact\":true,\"message\":\"junction link removed; target contents kept\"}"
+      ],
+      "duration_ms": 0
+    },
+    {
+      "id": "svc-update-credential",
+      "scenario": "service-password",
+      "status": "pass",
+      "weight": 1,
+      "expected": "stored credential hash equals the new password hash",
+      "actual": "ok=true stored=NEW_HASH",
+      "captured_output": [
+        "behavior.svcUpdateCredential -> {\"ok\":true,\"message\":\"credential updated + service restarted\",\"updated\":true,\"restarted\":true}",
+        "store={\"dsh\":{\"user\":\"dsh-svc\",\"passwordHash\":\"NEW_HASH\",\"running\":true,\"restartCount\":1}}"
+      ],
+      "duration_ms": 0
+    },
+    {
+      "id": "svc-restart",
+      "scenario": "service-password",
+      "status": "pass",
+      "weight": 1,
+      "expected": "after credential change the service is restarted (restartCount incremented, running=true)",
+      "actual": "ok=true before={\"restartCount\":0,\"running\":true} after={\"restartCount\":1,\"running\":true}",
+      "captured_output": [
+        "behavior.svcUpdateCredential -> {\"ok\":true,\"message\":\"credential updated + service restarted\",\"updated\":true,\"restarted\":true}"
+      ],
+      "duration_ms": 0
+    },
+    {
+      "id": "svc-failure-safe",
+      "scenario": "service-password",
+      "status": "pass",
+      "weight": 1,
+      "expected": "on update failure the previous credential is preserved and an error is reported",
+      "actual": "ok=false credentialPreserved=true stored=OLD_HASH",
+      "captured_output": [
+        "behavior.svcFailureSafe -> {\"ok\":false,\"credentialPreserved\":true,\"message\":\"failure safe: previous credential preserved\"}",
+        "store={\"dsh\":{\"user\":\"dsh-svc\",\"passwordHash\":\"OLD_HASH\",\"running\":true,\"restartCount\":0},\"_fault\":true}"
+      ],
+      "duration_ms": 0
+    }
+  ],
+  "summary": {
+    "total": 12,
+    "passed": 12,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0,
+    "fitness": 1,
+    "threshold_met": true
+  },
+  "gate": "PASS",
+  "fitness": 1
+}
